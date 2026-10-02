@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的專屬財務指揮中心</title>
+    <!-- 引入 Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // 設定專屬奶茶色系 (Milk-tea tones)
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        milktea: {
+                            50: '#fdf8f5',
+                            100: '#f8efe6',
+                            200: '#eddcd0',
+                            300: '#dcb8a3',
+                            800: '#8b5a42',
+                            900: '#734833',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 毛玻璃與隱藏捲軸特效 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        ::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-milktea-100 text-milktea-900 font-sans min-h-screen p-4 sm:p-8">
+
+    <!-- 頂部標題列 (毛玻璃) -->
+    <nav class="glass-card sticky top-0 z-50 rounded-2xl p-4 mb-6 shadow-sm flex justify-between items-center">
+        <h1 class="text-xl font-bold tracking-wider text-milktea-800">Finance Dashboard</h1>
+        <div id="status-indicator" class="text-sm font-medium text-gray-500 animate-pulse">資料同步中...</div>
+    </nav>
+
+    <!-- 核心數據區塊 -->
+    <main class="max-w-2xl mx-auto space-y-6">
+        
+        <!-- 總資產卡片 -->
+        <div class="glass-card rounded-3xl p-6 shadow-sm">
+            <h2 class="text-sm font-semibold text-gray-500 mb-1">實際可動用現金 (扣除卡費與房貸)</h2>
+            <div class="text-4xl font-extrabold text-milktea-900 tracking-tight" id="available-cash">$0</div>
+            
+            <div class="mt-4 flex gap-4 text-sm">
+                <div>
+                    <span class="text-gray-400">銀行總額</span>
+                    <p class="font-bold text-gray-700" id="total-cash">$0</p>
+                </div>
+                <div>
+                    <span class="text-gray-400">未出帳卡費</span>
+                    <p class="font-bold text-red-400" id="total-credit">-$0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 帳戶明細區塊 -->
+        <h3 class="text-lg font-bold text-milktea-800 pt-2 pl-2">各帳戶餘額</h3>
+        <div id="accounts-container" class="grid grid-cols-2 gap-4">
+            <!-- JavaScript 會在這裡動態生成卡片 -->
+        </div>
+
+    </main>
+
+    <script>
+        // 🚨 請將下方網址替換成您的 Google Apps Script Web App URL
+        const API_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnQiTF_3ilyWOUMooKvoexyiLGnQN4QSzzKj1xD1_h2ehONU5MEa7qTeqd0MoAWPuGCJJaTb2w-BkIJzCOjFqkPNLGaVF3xnVyUR0xUtHtamneOCJdtS_xzQ4TyuOH5wGY0Pqs589VTvd9kcOsl-LvXFIBkZuoNRI4bB4Zcj_tfUz6SyTUV1fOYcBVDjd71IYtIbxOvRXIynXn_Ap_8dzpW1YuEiRADD1n60u3ul4uPv5tDi8b95z51sOIspKMIsG8Us3RAB1_uhp3gTDkeuXXZsQfn4cA&lib=MmOVz80xE7Oad9omx1AEsLLPP7P5-87f5';
+
+        // 格式化金錢數字 (加上逗號)
+        const formatMoney = (num) => {
+            return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(num);
+        };
+
+        // 獲取資料並渲染畫面
+        async function fetchFinancialData() {
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+
+                if (data.status === "success") {
+                    // 更新核心數字
+                    document.getElementById('available-cash').innerText = formatMoney(data.cashData.availableCash);
+                    document.getElementById('total-cash').innerText = formatMoney(data.cashData.totalCash);
+                    document.getElementById('total-credit').innerText = formatMoney(data.cashData.totalCreditCardDebt);
+
+                    // 渲染帳戶列表
+                    const container = document.getElementById('accounts-container');
+                    container.innerHTML = ''; // 清空預設內容
+                    
+                    data.cashData.accounts.forEach(acc => {
+                        const card = document.createElement('div');
+                        card.className = "glass-card rounded-2xl p-4 shadow-sm flex flex-col justify-between";
+                        card.innerHTML = `
+                            <span class="text-sm text-gray-500 font-medium">${acc.name}</span>
+                            <span class="text-lg font-bold text-milktea-900 mt-1">${formatMoney(acc.balance)}</span>
+                        `;
+                        container.appendChild(card);
+                    });
+
+                    // 更改狀態指示器
+                    const status = document.getElementById('status-indicator');
+                    status.innerText = "已更新";
+                    status.classList.remove('animate-pulse');
+                    status.classList.add('text-green-600');
+                }
+            } catch (error) {
+                document.getElementById('status-indicator').innerText = "連線失敗";
+                document.getElementById('status-indicator').classList.add('text-red-500');
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // 網頁載入時立刻執行
+        window.onload = fetchFinancialData;
+    </script>
+</body>
+</html>
