@@ -4,17 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>理財計畫</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b5a42' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12V7H5a2 2 0 0 1 0-4h14v4'/%3E%3Cpath d='M3 5v14a2 2 0 0 0 2 2h16v-5'/%3E%3Cpath d='M18 12a2 2 0 0 0 0 4h4v-4Z'/%3E%3C/svg%3E">
-    <!-- 🍎 1. 指定 iPhone 主畫面圖示 (Apple Touch Icon) -->
-    <!-- 這裡我先幫您放了一個高質感的奶茶色金庫 PNG 圖片網址作為示範 -->
-    <!-- 🍎 指定 iPhone 主畫面圖示 (使用 180x180 的奶茶色錢包 PNG) -->
+    <!-- iPhone 圖示 -->
     <link rel="apple-touch-icon" href="https://img.icons8.com/ios/180/8b5a42/wallet.png">
-    <!-- 🍎 2. 隱藏 Safari 網址列，變成全螢幕沉浸式 App -->
-    <meta name="apple-mobile-web-app-capable" content="yes">    
-    <!-- 🍎 3. 設定頂部時間/電量狀態列的顏色風格 -->
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">    
-    <!-- 🍎 4. 設定在主畫面上顯示的 App 短名稱 (避免字太長被截斷) -->
-    <meta name="apple-mobile-web-app-title" content="財務指揮">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="理財計畫">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { theme: { extend: { colors: { milktea: { 50: '#fdf8f5', 100: '#f8efe6', 200: '#eddcd0', 300: '#dcb8a3', 800: '#8b5a42', 900: '#734833' }}}} }
@@ -28,13 +23,11 @@
 </head>
 <body class="bg-milktea-100 text-milktea-900 font-sans min-h-screen p-4 sm:p-8 pb-32">
 
-    <!-- 頂部標題列 -->
     <nav class="glass-card sticky top-0 z-40 max-w-2xl mx-auto rounded-2xl p-4 mb-6 shadow-sm flex justify-between items-center">
         <h1 class="text-xl font-bold tracking-wider text-milktea-800">Finance Dashboard</h1>
         <div id="status-indicator" class="text-sm font-medium text-gray-500 animate-pulse">資料同步中...</div>
     </nav>
 
-    <!-- 儀表板內容 -->
     <main class="max-w-2xl mx-auto space-y-8">
         <!-- 1. 現金與目標 -->
         <section>
@@ -47,7 +40,13 @@
                     <div><span class="text-gray-400">未出帳卡費 </span><span class="font-bold text-red-400" id="total-credit">...</span></div>
                 </div>
 
-                <div class="mt-6 pt-5 border-t border-white/50">
+                <!-- 🌟 智能繳卡費按鈕 -->
+                <button onclick="payCreditCards()" class="mt-5 w-full bg-white/50 hover:bg-white/80 border border-red-200 text-red-500 font-bold py-2.5 rounded-xl transition-colors shadow-sm flex justify-center items-center gap-2 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                    執行本月智能繳卡費
+                </button>
+
+                <div class="mt-5 pt-5 border-t border-white/50">
                     <div class="flex justify-between text-sm mb-2">
                         <span class="text-gray-500 font-semibold text-xs">本月五年計畫達標率</span>
                         <span class="text-milktea-900 font-bold" id="cash-progress-text">...%</span>
@@ -73,14 +72,8 @@
             <h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">股票資產部位</h3>
             <div class="glass-card rounded-3xl p-6 shadow-sm">
                 <div class="flex justify-between items-end mb-6 border-b border-gray-200/50 pb-4">
-                    <div>
-                        <h2 class="text-sm font-semibold text-gray-500 mb-1">總現值</h2>
-                        <div class="text-3xl font-extrabold text-milktea-900" id="total-stock-value">讀取中...</div>
-                    </div>
-                    <div class="text-right">
-                        <h2 class="text-sm font-semibold text-gray-500 mb-1">未實現損益</h2>
-                        <div class="text-xl font-bold" id="total-stock-pl">...</div>
-                    </div>
+                    <div><h2 class="text-sm font-semibold text-gray-500 mb-1">總現值</h2><div class="text-3xl font-extrabold text-milktea-900" id="total-stock-value">讀取中...</div></div>
+                    <div class="text-right"><h2 class="text-sm font-semibold text-gray-500 mb-1">未實現損益</h2><div class="text-xl font-bold" id="total-stock-pl">...</div></div>
                 </div>
                 <div id="stocks-container" class="space-y-2"></div>
             </div>
@@ -99,31 +92,23 @@
         全面更新
     </button>
 
-    <!-- 更新帳戶的彈出視窗 (Modal) -->
+    <!-- 更新視窗 -->
     <div id="update-modal" class="hidden fixed inset-0 bg-milktea-900/40 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center items-center">
         <div class="bg-milktea-50 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 max-h-[90vh] flex flex-col shadow-2xl">
             <h2 class="text-xl font-bold text-milktea-900 mb-2">更新財務紀錄</h2>
-            <p class="text-sm text-gray-500 mb-4 border-b border-gray-200 pb-2">請修改下方數值，將自動同步至 Google Sheets。</p>
-            
-            <!-- 動態生成的表單 (可捲動) -->
-            <form id="update-form" onsubmit="submitUpdates(event)" class="overflow-y-auto pr-2 pb-4 space-y-6 flex-1">
-                <!-- 欄位由 JS 生成 -->
-            </form>
-
+            <form id="update-form" onsubmit="submitUpdates(event)" class="overflow-y-auto pr-2 pb-4 space-y-6 flex-1 mt-4"></form>
             <div class="flex gap-3 pt-4 border-t border-gray-200 mt-2">
-                <button type="button" onclick="closeUpdateModal()" class="flex-1 py-3 rounded-xl bg-gray-200 text-gray-700 font-bold active:bg-gray-300">取消</button>
-                <button type="submit" form="update-form" id="submit-btn" class="flex-1 py-3 rounded-xl bg-milktea-800 text-white font-bold flex justify-center items-center">
-                    <span id="submit-text">儲存同步</span>
-                </button>
+                <button type="button" onclick="closeUpdateModal()" class="flex-1 py-3 rounded-xl bg-gray-200 text-gray-700 font-bold">取消</button>
+                <button type="submit" form="update-form" id="submit-btn" class="flex-1 py-3 rounded-xl bg-milktea-800 text-white font-bold"><span id="submit-text">儲存同步</span></button>
             </div>
         </div>
     </div>
 
     <script>
         // 🚨 務必填入您的 API URL
-        const API_URL = 'https://script.google.com/macros/s/AKfycbxlY_IDwSol113nFFddGTZ-3ILMgk2CKsgnRFskw1JWisbPN0ODg9AG_Hy_bPTuYyJUwg/exec';
+        const API_URL = 'YOUR_GAS_API_URL_HERE';
         
-        let globalData = {}; // 暫存所有資料給表單使用
+        let globalData = {}; 
         const formatMoney = (num) => new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(num);
 
         async function fetchFinancialData() {
@@ -132,7 +117,7 @@
                 const data = await response.json();
 
                 if (data.status === "success") {
-                    globalData = data; // 存起來
+                    globalData = data; 
                     
                     const availableCash = data.cashData.availableCash;
                     const targetCash = data.targetData.currentTarget;
@@ -145,13 +130,12 @@
                     document.getElementById('cash-progress-text').innerText = `${cashProgress}%`;
                     setTimeout(() => { document.getElementById('cash-progress-bar').style.width = `${cashProgress}%`; }, 100);
 
-                    // 借款
                     if (data.debtData) {
                         document.getElementById('total-remaining-debt').innerText = `剩餘總額: ${formatMoney(data.debtData.totalRemaining)}`;
                         const debtsContainer = document.getElementById('debts-container');
                         debtsContainer.innerHTML = '';
                         data.debtData.debts.forEach(debt => {
-                            if (debt.remaining > 0) { // 隱藏已還完的
+                            if (debt.remaining > 0) { 
                                 const debtUI = document.createElement('div');
                                 debtUI.innerHTML = `
                                     <div class="flex justify-between items-end mb-1.5">
@@ -168,7 +152,6 @@
                         });
                     }
 
-                    // 股票
                     document.getElementById('total-stock-value').innerText = formatMoney(data.stockData.totalMarketValue);
                     const plElement = document.getElementById('total-stock-pl');
                     const isPlPositive = data.stockData.totalPL >= 0;
@@ -188,7 +171,6 @@
                         `;
                     });
 
-                    // 帳戶明細
                     const accContainer = document.getElementById('accounts-container');
                     accContainer.innerHTML = ''; 
                     data.cashData.accounts.forEach(acc => {
@@ -210,13 +192,30 @@
             }
         }
 
-        // ====== 互動寫入功能 (升級版) ======
+        // 🌟 執行一鍵智能繳款邏輯
+        async function payCreditCards() {
+            if (!confirm("確定要執行智能繳款嗎？\n系統將自動從各銀行扣除卡費，若餘額不足將自動由「玉山-台幣」代墊，並將卡費歸零。")) return;
+            
+            document.getElementById('status-indicator').innerText = "扣款執行中...";
+            document.getElementById('status-indicator').classList.add('animate-pulse', 'text-gray-500');
+
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'pay_credit_cards' })
+                });
+                await fetchFinancialData(); // 重整畫面
+                alert("✅ 卡費扣款成功！");
+            } catch (error) {
+                alert("執行失敗，請檢查網路連線。");
+            }
+        }
 
         function openUpdateModal() {
             const form = document.getElementById('update-form');
             let html = '';
             
-            // 1. 銀行餘額
             html += '<div class="space-y-2"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">🏦 銀行餘額</h3>';
             globalData.cashData.accounts.forEach(acc => {
                 html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
@@ -226,22 +225,18 @@
             });
             html += '</div>';
 
-            // 2. 信用卡未出帳 (列出主要有刷卡的銀行)
+            // 🌟 取消過濾，列出「所有銀行」的信用卡輸入框
             html += '<div class="space-y-2 mt-6"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">💳 信用卡未出帳</h3>';
             globalData.cashData.accounts.forEach(acc => {
-                // 預設列出玉山、中信、國泰、永豐，或是有帳單的帳戶
-                if (["玉山-台幣", "中信", "國泰", "永豐大戶"].includes(acc.name) || acc.ccBill > 0) {
-                    html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
-                                <label class="text-sm font-bold text-gray-700 w-1/3 truncate">${acc.name}</label>
-                                <input type="number" name="cc_${acc.name}" value="${acc.ccBill}" class="w-2/3 bg-white rounded-lg py-1 px-2 text-right text-red-500">
-                             </div>`;
-                }
+                html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
+                            <label class="text-sm font-bold text-gray-700 w-1/3 truncate">${acc.name}</label>
+                            <input type="number" name="cc_${acc.name}" value="${acc.ccBill}" class="w-2/3 bg-white rounded-lg py-1 px-2 text-right text-red-500">
+                         </div>`;
             });
             html += '</div>';
 
-            // 3. 親友借款 (已歸還)
             if (globalData.debtData && globalData.debtData.debts.length > 0) {
-                html += '<div class="space-y-2 mt-6"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">🤝 親友借款 (輸入已還金額，需加負號)</h3>';
+                html += '<div class="space-y-2 mt-6"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">🤝 親友借款 (已還金額)</h3>';
                 globalData.debtData.debts.forEach(debt => {
                     html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
                                 <label class="text-sm font-bold text-gray-700 w-1/3 truncate">${debt.name}</label>
@@ -251,7 +246,6 @@
                 html += '</div>';
             }
 
-            // 4. 股票持股數
             if (globalData.stockData && globalData.stockData.holdings.length > 0) {
                 html += '<div class="space-y-2 mt-6"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">📈 股票持股數</h3>';
                 globalData.stockData.holdings.forEach(stock => {
@@ -275,13 +269,11 @@
 
         async function submitUpdates(event) {
             event.preventDefault();
-            
             const btn = document.getElementById('submit-btn');
             const text = document.getElementById('submit-text');
             btn.disabled = true;
             text.innerText = "儲存中...";
 
-            // 將表單資料分類打包
             const formData = new FormData(event.target);
             const updates = { accounts: {}, creditCards: {}, debts: {}, stocks: {} };
             
@@ -294,7 +286,6 @@
             }
 
             try {
-                // 發送 POST 請求給 Google Apps Script
                 await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -305,10 +296,9 @@
                 document.getElementById('status-indicator').innerText = "更新資料中...";
                 document.getElementById('status-indicator').classList.add('animate-pulse', 'text-gray-500');
                 
-                await fetchFinancialData(); // 重新整理畫面
-                
+                await fetchFinancialData(); 
             } catch (error) {
-                alert("儲存失敗，請確認 Apps Script 有正確發布為「新版本 (New version)」！");
+                alert("儲存失敗，請確認 Apps Script 已發布為新版本！");
             } finally {
                 btn.disabled = false;
                 text.innerText = "儲存同步";
