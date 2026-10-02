@@ -117,8 +117,14 @@
         let globalData = {}; 
         const formatMoney = (num) => new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(num);
 
-        async function fetchFinancialData() {
+// 帶有自動重試機制的讀取功能
+        async function fetchFinancialData(retryCount = 0) {
             try {
+                // 如果是重試狀態，更新一下文字讓您知道系統正在努力
+                if (retryCount > 0) {
+                    document.getElementById('status-indicator').innerText = `喚醒伺服器中 (${retryCount}/2)...`;
+                }
+
                 const response = await fetch(API_URL);
                 const data = await response.json();
 
@@ -194,7 +200,14 @@
                     status.classList.remove('animate-pulse');
                 }
             } catch (error) {
-                document.getElementById('status-indicator').innerText = "連線失敗";
+                // 🔴 核心修改：如果失敗且重試次數小於 2 次，等待 1.5 秒後自動重試
+                if (retryCount < 2) {
+                    console.warn(`第 ${retryCount + 1} 次連線失敗，準備重試...`);
+                    setTimeout(() => fetchFinancialData(retryCount + 1), 1500);
+                } else {
+                    document.getElementById('status-indicator').innerText = "連線失敗";
+                    document.getElementById('status-indicator').classList.add('text-red-500');
+                }
             }
         }
 
