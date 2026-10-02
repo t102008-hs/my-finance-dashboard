@@ -7,35 +7,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        milktea: {
-                            50: '#fdf8f5',
-                            100: '#f8efe6',
-                            200: '#eddcd0',
-                            300: '#dcb8a3',
-                            800: '#8b5a42',
-                            900: '#734833',
-                        }
-                    }
-                }
-            }
+            theme: { extend: { colors: {
+                milktea: { 50: '#fdf8f5', 100: '#f8efe6', 200: '#eddcd0', 300: '#dcb8a3', 800: '#8b5a42', 900: '#734833' }
+            }}}
         }
     </script>
     <style>
-        .glass-card {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
+        .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
         ::-webkit-scrollbar { display: none; }
+        .progress-bar-fill { transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 </head>
 <body class="bg-milktea-100 text-milktea-900 font-sans min-h-screen p-4 sm:p-8 pb-20">
 
-    <!-- 頂部標題列 -->
     <nav class="glass-card sticky top-0 z-50 rounded-2xl p-4 mb-6 shadow-sm flex justify-between items-center">
         <h1 class="text-xl font-bold tracking-wider text-milktea-800">Finance Dashboard</h1>
         <div id="status-indicator" class="text-sm font-medium text-gray-500 animate-pulse">資料同步中...</div>
@@ -43,26 +27,43 @@
 
     <main class="max-w-2xl mx-auto space-y-8">
         
-        <!-- 總現金資產卡片 -->
+        <!-- 1. 總現金資產與目標卡片 -->
         <section>
             <div class="glass-card rounded-3xl p-6 shadow-sm">
                 <h2 class="text-sm font-semibold text-gray-500 mb-1">實際可動用現金 (扣除卡費與房貸)</h2>
                 <div class="text-4xl font-extrabold text-milktea-900 tracking-tight" id="available-cash">讀取中...</div>
                 
                 <div class="mt-4 flex gap-6 text-sm">
-                    <div>
-                        <span class="text-gray-400">銀行總額</span>
-                        <p class="font-bold text-gray-700" id="total-cash">...</p>
+                    <div><span class="text-gray-400">銀行總額 </span><span class="font-bold text-gray-700" id="total-cash">...</span></div>
+                    <div><span class="text-gray-400">未出帳卡費 </span><span class="font-bold text-red-400" id="total-credit">...</span></div>
+                </div>
+
+                <!-- 🎯 五年計畫達標進度條 -->
+                <div class="mt-6 pt-5 border-t border-white/50">
+                    <div class="flex justify-between text-sm mb-2">
+                        <span class="text-gray-500 font-semibold text-xs">本月五年計畫達標率</span>
+                        <span class="text-milktea-900 font-bold" id="cash-progress-text">...%</span>
                     </div>
-                    <div>
-                        <span class="text-gray-400">未出帳卡費</span>
-                        <p class="font-bold text-red-400" id="total-credit">...</p>
+                    <div class="w-full bg-white/60 rounded-full h-3 mb-1.5 overflow-hidden shadow-inner">
+                        <div id="cash-progress-bar" class="progress-bar-fill bg-green-400 h-3 rounded-full" style="width: 0%"></div>
                     </div>
+                    <p class="text-xs text-gray-400 text-right" id="cash-target-detail">目標: ... / 目前: ...</p>
                 </div>
             </div>
         </section>
 
-        <!-- 股票投資部位 (新加入) -->
+        <!-- 2. 親友借款進度 (新加入) -->
+        <section>
+            <div class="flex justify-between items-end mb-3 pl-2">
+                <h3 class="text-lg font-bold text-milktea-800">親友借款進度</h3>
+                <span class="text-sm font-bold text-red-400" id="total-remaining-debt">剩餘待還: ...</span>
+            </div>
+            <div class="glass-card rounded-3xl p-6 shadow-sm space-y-5" id="debts-container">
+                <!-- 借款進度條由 JS 生成 -->
+            </div>
+        </section>
+
+        <!-- 3. 股票投資部位 -->
         <section>
             <h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">股票資產部位</h3>
             <div class="glass-card rounded-3xl p-6 shadow-sm">
@@ -76,29 +77,23 @@
                         <div class="text-xl font-bold" id="total-stock-pl">...</div>
                     </div>
                 </div>
-                <div id="stocks-container" class="space-y-2">
-                    <!-- 股票明細將由 JS 生成 -->
-                </div>
+                <div id="stocks-container" class="space-y-2"></div>
             </div>
         </section>
 
-        <!-- 帳戶明細區塊 -->
+        <!-- 4. 帳戶明細區塊 -->
         <section>
             <h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">各帳戶餘額明細</h3>
-            <div id="accounts-container" class="grid grid-cols-2 gap-4">
-                <!-- 帳戶明細將由 JS 生成 -->
-            </div>
+            <div id="accounts-container" class="grid grid-cols-2 gap-4"></div>
         </section>
 
     </main>
 
     <script>
-        // 🚨 請將下方網址替換成您的 API 網址
+        // 🚨 請替換為您的 API 網址
         const API_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnQiTF_3ilyWOUMooKvoexyiLGnQN4QSzzKj1xD1_h2ehONU5MEa7qTeqd0MoAWPuGCJJaTb2w-BkIJzCOjFqkPNLGaVF3xnVyUR0xUtHtamneOCJdtS_xzQ4TyuOH5wGY0Pqs589VTvd9kcOsl-LvXFIBkZuoNRI4bB4Zcj_tfUz6SyTUV1fOYcBVDjd71IYtIbxOvRXIynXn_Ap_8dzpW1YuEiRADD1n60u3ul4uPv5tDi8b95z51sOIspKMIsG8Us3RAB1_uhp3gTDkeuXXZsQfn4cA&lib=MmOVz80xE7Oad9omx1AEsLLPP7P5-87f5';
 
-        const formatMoney = (num) => {
-            return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(num);
-        };
+        const formatMoney = (num) => new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(num);
 
         async function fetchFinancialData() {
             try {
@@ -106,70 +101,94 @@
                 const data = await response.json();
 
                 if (data.status === "success") {
-                    // 1. 渲染現金區塊
-                    document.getElementById('available-cash').innerText = formatMoney(data.cashData.availableCash);
+                    const availableCash = data.cashData.availableCash;
+                    const targetCash = data.targetData.currentTarget;
+
+                    // 1. 現金與目標進度
+                    document.getElementById('available-cash').innerText = formatMoney(availableCash);
                     document.getElementById('total-cash').innerText = formatMoney(data.cashData.totalCash);
                     document.getElementById('total-credit').innerText = formatMoney(data.cashData.totalCreditCardDebt);
+                    
+                    const cashProgress = Math.min((availableCash / targetCash) * 100, 100).toFixed(1);
+                    document.getElementById('cash-progress-text').innerText = `${cashProgress}%`;
+                    document.getElementById('cash-target-detail').innerText = `目標: ${formatMoney(targetCash)}`;
+                    // 延遲一點點讓動畫生效
+                    setTimeout(() => {
+                        const bar = document.getElementById('cash-progress-bar');
+                        bar.style.width = `${cashProgress}%`;
+                        if (availableCash < targetCash) bar.className = "progress-bar-fill bg-orange-400 h-3 rounded-full";
+                    }, 100);
+
+                    // 2. 借款進度渲染
+                    if (data.debtData) {
+                        document.getElementById('total-remaining-debt').innerText = `剩餘總額: ${formatMoney(data.debtData.totalRemaining)}`;
+                        const debtsContainer = document.getElementById('debts-container');
+                        debtsContainer.innerHTML = '';
+
+                        data.debtData.debts.forEach(debt => {
+                            // 已經還完的不顯示，或者顯示為 100% (這裡選擇只顯示還有欠款的)
+                            const isCleared = debt.remaining === 0;
+                            const debtUI = document.createElement('div');
+                            debtUI.innerHTML = `
+                                <div class="flex justify-between items-end mb-1.5">
+                                    <span class="text-gray-700 font-bold">${debt.name}</span>
+                                    <span class="text-xs text-gray-500">已還 ${debt.progress}% / 剩餘 ${formatMoney(debt.remaining)}</span>
+                                </div>
+                                <div class="w-full bg-white/60 rounded-full h-2.5 overflow-hidden shadow-inner">
+                                    <div class="progress-bar-fill ${isCleared ? 'bg-green-400' : 'bg-milktea-800'} h-2.5 rounded-full" style="width: 0%"></div>
+                                </div>
+                            `;
+                            debtsContainer.appendChild(debtUI);
+                            
+                            // 動畫展開
+                            setTimeout(() => {
+                                debtUI.querySelector('.progress-bar-fill').style.width = `${debt.progress}%`;
+                            }, 200);
+                        });
+                    }
+
+                    // 3. 股票與帳戶 (與前一版相同)
+                    document.getElementById('total-stock-value').innerText = formatMoney(data.stockData.totalMarketValue);
+                    const plElement = document.getElementById('total-stock-pl');
+                    const isPlPositive = data.stockData.totalPL >= 0;
+                    plElement.innerText = (isPlPositive ? '+' : '') + formatMoney(data.stockData.totalPL);
+                    plElement.className = isPlPositive ? "text-xl font-bold text-red-500" : "text-xl font-bold text-green-500";
+                    
+                    const stockContainer = document.getElementById('stocks-container');
+                    stockContainer.innerHTML = '';
+                    data.stockData.holdings.forEach(stock => {
+                        const isPositive = stock.profitLoss >= 0;
+                        stockContainer.innerHTML += `
+                            <div class="flex justify-between items-center p-3 hover:bg-white/40 rounded-xl transition-colors">
+                                <div><div class="font-bold text-milktea-900">${stock.name}</div><div class="text-xs text-gray-500 mt-0.5">${stock.shares} 股</div></div>
+                                <div class="text-right"><div class="font-bold text-gray-800">${formatMoney(stock.marketValue)}</div>
+                                <div class="text-sm ${isPositive ? 'text-red-500' : 'text-green-500'} font-medium">${isPositive ? '+' : ''}${formatMoney(stock.profitLoss)}</div></div>
+                            </div>
+                        `;
+                    });
 
                     const accContainer = document.getElementById('accounts-container');
                     accContainer.innerHTML = ''; 
                     data.cashData.accounts.forEach(acc => {
-                        const card = document.createElement('div');
-                        card.className = "glass-card rounded-2xl p-4 shadow-sm flex flex-col justify-between";
-                        card.innerHTML = `
-                            <span class="text-sm text-gray-500 font-medium">${acc.name}</span>
-                            <span class="text-lg font-bold text-milktea-900 mt-1">${formatMoney(acc.balance)}</span>
+                        accContainer.innerHTML += `
+                            <div class="glass-card rounded-2xl p-4 shadow-sm flex flex-col justify-between">
+                                <span class="text-sm text-gray-500 font-medium">${acc.name}</span>
+                                <span class="text-lg font-bold text-milktea-900 mt-1">${formatMoney(acc.balance)}</span>
+                            </div>
                         `;
-                        accContainer.appendChild(card);
                     });
 
-                    // 2. 渲染股票區塊
-                    if (data.stockData) {
-                        document.getElementById('total-stock-value').innerText = formatMoney(data.stockData.totalMarketValue);
-                        
-                        const plElement = document.getElementById('total-stock-pl');
-                        const plValue = data.stockData.totalPL;
-                        const isPlPositive = plValue >= 0;
-                        plElement.innerText = (isPlPositive ? '+' : '') + formatMoney(plValue);
-                        plElement.className = isPlPositive ? "text-xl font-bold text-red-500" : "text-xl font-bold text-green-500";
-
-                        const stockContainer = document.getElementById('stocks-container');
-                        stockContainer.innerHTML = '';
-                        
-                        data.stockData.holdings.forEach(stock => {
-                            const isPositive = stock.profitLoss >= 0;
-                            const colorClass = isPositive ? 'text-red-500' : 'text-green-500';
-                            const sign = isPositive ? '+' : '';
-                            
-                            const stockRow = document.createElement('div');
-                            stockRow.className = "flex justify-between items-center p-3 hover:bg-white/40 rounded-xl transition-colors duration-200";
-                            stockRow.innerHTML = `
-                                <div>
-                                    <div class="font-bold text-milktea-900">${stock.name} <span class="text-xs text-gray-400 font-normal ml-1">${stock.ticker}</span></div>
-                                    <div class="text-xs text-gray-500 mt-0.5">${stock.shares} 股</div>
-                                </div>
-                                <div class="text-right">
-                                    <div class="font-bold text-gray-800">${formatMoney(stock.marketValue)}</div>
-                                    <div class="text-sm ${colorClass} font-medium">${sign}${formatMoney(stock.profitLoss)}</div>
-                                </div>
-                            `;
-                            stockContainer.appendChild(stockRow);
-                        });
-                    }
-
-                    // 更新狀態指示器
+                    // 更新指示器
                     const status = document.getElementById('status-indicator');
                     status.innerText = "已更新";
+                    status.classList.replace('text-gray-500', 'text-green-600');
                     status.classList.remove('animate-pulse');
-                    status.classList.add('text-green-600');
                 }
             } catch (error) {
                 document.getElementById('status-indicator').innerText = "連線失敗";
                 document.getElementById('status-indicator').classList.add('text-red-500');
-                console.error('Error fetching data:', error);
             }
         }
-
         window.onload = fetchFinancialData;
     </script>
 </body>
