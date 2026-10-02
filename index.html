@@ -12,7 +12,6 @@
         .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
         ::-webkit-scrollbar { display: none; }
         .progress-bar-fill { transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
-        /* 避免彈出視窗時背景可以滑動 */
         body.modal-open { overflow: hidden; }
     </style>
 </head>
@@ -76,7 +75,7 @@
             </div>
         </section>
 
-        <!-- 4. 帳戶明細區塊 -->
+        <!-- 4. 帳戶明細 -->
         <section>
             <h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">各帳戶餘額明細</h3>
             <div id="accounts-container" class="grid grid-cols-2 gap-4"></div>
@@ -86,24 +85,24 @@
     <!-- 浮動更新按鈕 -->
     <button onclick="openUpdateModal()" class="fixed bottom-8 right-8 bg-milktea-800 hover:bg-milktea-900 text-white shadow-xl shadow-milktea-800/30 rounded-full py-4 px-6 font-bold flex items-center gap-2 transition-transform active:scale-95 z-40">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
-        更新餘額
+        全面更新
     </button>
 
     <!-- 更新帳戶的彈出視窗 (Modal) -->
     <div id="update-modal" class="hidden fixed inset-0 bg-milktea-900/40 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center items-center">
-        <div class="bg-milktea-50 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 max-h-[85vh] flex flex-col shadow-2xl animate-slide-up">
-            <h2 class="text-xl font-bold text-milktea-900 mb-2">更新月底帳戶餘額</h2>
-            <p class="text-sm text-gray-500 mb-6">請輸入最新的數字，系統將自動覆寫至 Google Sheets。</p>
+        <div class="bg-milktea-50 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 max-h-[90vh] flex flex-col shadow-2xl">
+            <h2 class="text-xl font-bold text-milktea-900 mb-2">更新財務紀錄</h2>
+            <p class="text-sm text-gray-500 mb-4 border-b border-gray-200 pb-2">請修改下方數值，將自動同步至 Google Sheets。</p>
             
-            <!-- 動態生成的表單 -->
-            <form id="update-form" onsubmit="submitUpdates(event)" class="overflow-y-auto pr-2 space-y-4 mb-6 flex-1">
+            <!-- 動態生成的表單 (可捲動) -->
+            <form id="update-form" onsubmit="submitUpdates(event)" class="overflow-y-auto pr-2 pb-4 space-y-6 flex-1">
                 <!-- 欄位由 JS 生成 -->
             </form>
 
-            <div class="flex gap-3 pt-4 border-t border-gray-200">
+            <div class="flex gap-3 pt-4 border-t border-gray-200 mt-2">
                 <button type="button" onclick="closeUpdateModal()" class="flex-1 py-3 rounded-xl bg-gray-200 text-gray-700 font-bold active:bg-gray-300">取消</button>
                 <button type="submit" form="update-form" id="submit-btn" class="flex-1 py-3 rounded-xl bg-milktea-800 text-white font-bold flex justify-center items-center">
-                    <span id="submit-text">儲存更新</span>
+                    <span id="submit-text">儲存同步</span>
                 </button>
             </div>
         </div>
@@ -111,9 +110,9 @@
 
     <script>
         // 🚨 務必填入您的 API URL
-        const API_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnQiTF_3ilyWOUMooKvoexyiLGnQN4QSzzKj1xD1_h2ehONU5MEa7qTeqd0MoAWPuGCJJaTb2w-BkIJzCOjFqkPNLGaVF3xnVyUR0xUtHtamneOCJdtS_xzQ4TyuOH5wGY0Pqs589VTvd9kcOsl-LvXFIBkZuoNRI4bB4Zcj_tfUz6SyTUV1fOYcBVDjd71IYtIbxOvRXIynXn_Ap_8dzpW1YuEiRADD1n60u3ul4uPv5tDi8b95z51sOIspKMIsG8Us3RAB1_uhp3gTDkeuXXZsQfn4cA&lib=MmOVz80xE7Oad9omx1AEsLLPP7P5-87f5';
+        const API_URL = 'https://script.googleusercontent.com/macros/echo?user_content_key=AUkAhnSLXJEH0dkCRIpinxsH27-_VUKk4EfIPUjwBsTk1XxYB5Vps-2k_BudiSIUTo8vxJWUflHpnR_ruiAlX-n5ceiCeMH_LOUGL-K1YwWfZcbte_Ca70RMvH5pdklSWXUx0UtMOD7zThEGO1vKhbxNmBskbl6CmKJB3xGezo3Z5dYX_NwjMS3sC_jCN689aB1ENsfMBpHjZVAilMD2-pRRs2nd8JTyYfABwiwGtY88Xi8aXO_Am8w4iJGYqQ0eoMt_B5xYkpvLYmVyBSs1SAmpvjNQ57G5hw&lib=MmOVz80xE7Oad9omx1AEsLLPP7P5-87f5';
         
-        let globalAccounts = []; // 儲存目前帳戶狀態
+        let globalData = {}; // 暫存所有資料給表單使用
         const formatMoney = (num) => new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(num);
 
         async function fetchFinancialData() {
@@ -122,7 +121,7 @@
                 const data = await response.json();
 
                 if (data.status === "success") {
-                    globalAccounts = data.cashData.accounts; // 記住帳戶資料供 Modal 使用
+                    globalData = data; // 存起來
                     
                     const availableCash = data.cashData.availableCash;
                     const targetCash = data.targetData.currentTarget;
@@ -135,16 +134,13 @@
                     document.getElementById('cash-progress-text').innerText = `${cashProgress}%`;
                     setTimeout(() => { document.getElementById('cash-progress-bar').style.width = `${cashProgress}%`; }, 100);
 
-                    // 借款 (已經在後端隱藏歸零的了)
+                    // 借款
                     if (data.debtData) {
                         document.getElementById('total-remaining-debt').innerText = `剩餘總額: ${formatMoney(data.debtData.totalRemaining)}`;
                         const debtsContainer = document.getElementById('debts-container');
                         debtsContainer.innerHTML = '';
-                        
-                        if (data.debtData.debts.length === 0) {
-                            debtsContainer.innerHTML = '<div class="text-center text-gray-400 py-4">目前無進行中的借款 🎉</div>';
-                        } else {
-                            data.debtData.debts.forEach(debt => {
+                        data.debtData.debts.forEach(debt => {
+                            if (debt.remaining > 0) { // 隱藏已還完的
                                 const debtUI = document.createElement('div');
                                 debtUI.innerHTML = `
                                     <div class="flex justify-between items-end mb-1.5">
@@ -157,8 +153,8 @@
                                 `;
                                 debtsContainer.appendChild(debtUI);
                                 setTimeout(() => debtUI.querySelector('.progress-bar-fill').style.width = `${debt.progress}%`, 200);
-                            });
-                        }
+                            }
+                        });
                     }
 
                     // 股票
@@ -203,26 +199,60 @@
             }
         }
 
-        // ====== 互動寫入功能 ======
+        // ====== 互動寫入功能 (升級版) ======
 
         function openUpdateModal() {
             const form = document.getElementById('update-form');
-            form.innerHTML = ''; // 清空舊的
+            let html = '';
             
-            // 用剛剛讀到的 globalAccounts 自動生成輸入框
-            globalAccounts.forEach(acc => {
-                form.innerHTML += `
-                    <div class="flex items-center justify-between bg-white/50 p-3 rounded-xl border border-white">
-                        <label class="text-sm font-bold text-gray-700 w-1/3">${acc.name}</label>
-                        <div class="relative w-2/3">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
-                            <input type="number" name="${acc.name}" value="${acc.balance}" 
-                                class="w-full bg-white rounded-lg py-2 pl-7 pr-3 text-right font-bold text-milktea-900 focus:outline-none focus:ring-2 focus:ring-milktea-300">
-                        </div>
-                    </div>
-                `;
+            // 1. 銀行餘額
+            html += '<div class="space-y-2"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">🏦 銀行餘額</h3>';
+            globalData.cashData.accounts.forEach(acc => {
+                html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
+                            <label class="text-sm font-bold text-gray-700 w-1/3 truncate">${acc.name}</label>
+                            <input type="number" name="acc_${acc.name}" value="${acc.balance}" class="w-2/3 bg-white rounded-lg py-1 px-2 text-right">
+                         </div>`;
             });
+            html += '</div>';
 
+            // 2. 信用卡未出帳 (列出主要有刷卡的銀行)
+            html += '<div class="space-y-2 mt-6"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">💳 信用卡未出帳</h3>';
+            globalData.cashData.accounts.forEach(acc => {
+                // 預設列出玉山、中信、國泰、永豐，或是有帳單的帳戶
+                if (["玉山-台幣", "中信", "國泰", "永豐大戶"].includes(acc.name) || acc.ccBill > 0) {
+                    html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
+                                <label class="text-sm font-bold text-gray-700 w-1/3 truncate">${acc.name}</label>
+                                <input type="number" name="cc_${acc.name}" value="${acc.ccBill}" class="w-2/3 bg-white rounded-lg py-1 px-2 text-right text-red-500">
+                             </div>`;
+                }
+            });
+            html += '</div>';
+
+            // 3. 親友借款 (已歸還)
+            if (globalData.debtData && globalData.debtData.debts.length > 0) {
+                html += '<div class="space-y-2 mt-6"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">🤝 親友借款 (輸入已還金額，需加負號)</h3>';
+                globalData.debtData.debts.forEach(debt => {
+                    html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
+                                <label class="text-sm font-bold text-gray-700 w-1/3 truncate">${debt.name}</label>
+                                <input type="number" name="debt_${debt.rawName}" value="${debt.rawRepaid}" class="w-2/3 bg-white rounded-lg py-1 px-2 text-right text-milktea-900">
+                             </div>`;
+                });
+                html += '</div>';
+            }
+
+            // 4. 股票持股數
+            if (globalData.stockData && globalData.stockData.holdings.length > 0) {
+                html += '<div class="space-y-2 mt-6"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">📈 股票持股數</h3>';
+                globalData.stockData.holdings.forEach(stock => {
+                    html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
+                                <label class="text-sm font-bold text-gray-700 w-1/3 truncate">${stock.name}</label>
+                                <input type="number" name="stock_${stock.name}" value="${stock.shares}" class="w-2/3 bg-white rounded-lg py-1 px-2 text-right">
+                             </div>`;
+                });
+                html += '</div>';
+            }
+
+            form.innerHTML = html;
             document.getElementById('update-modal').classList.remove('hidden');
             document.body.classList.add('modal-open');
         }
@@ -233,18 +263,23 @@
         }
 
         async function submitUpdates(event) {
-            event.preventDefault(); // 防止網頁重整
+            event.preventDefault();
             
             const btn = document.getElementById('submit-btn');
             const text = document.getElementById('submit-text');
             btn.disabled = true;
             text.innerText = "儲存中...";
 
-            // 收集表單裡所有的數字
+            // 將表單資料分類打包
             const formData = new FormData(event.target);
-            const updates = {};
+            const updates = { accounts: {}, creditCards: {}, debts: {}, stocks: {} };
+            
             for (let [key, value] of formData.entries()) {
-                updates[key] = Number(value);
+                const val = Number(value);
+                if (key.startsWith('acc_')) updates.accounts[key.replace('acc_', '')] = val;
+                else if (key.startsWith('cc_')) updates.creditCards[key.replace('cc_', '')] = val;
+                else if (key.startsWith('debt_')) updates.debts[key.replace('debt_', '')] = val;
+                else if (key.startsWith('stock_')) updates.stocks[key.replace('stock_', '')] = val;
             }
 
             try {
@@ -252,10 +287,9 @@
                 await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: 'update_balances', data: updates })
+                    body: JSON.stringify({ action: 'update_all', data: updates })
                 });
 
-                // 成功後關閉視窗，並重新讀取最新資料
                 closeUpdateModal();
                 document.getElementById('status-indicator').innerText = "更新資料中...";
                 document.getElementById('status-indicator').classList.add('animate-pulse', 'text-gray-500');
@@ -263,10 +297,10 @@
                 await fetchFinancialData(); // 重新整理畫面
                 
             } catch (error) {
-                alert("儲存失敗，請檢查網路連線");
+                alert("儲存失敗，請確認 Apps Script 有正確發布為「新版本 (New version)」！");
             } finally {
                 btn.disabled = false;
-                text.innerText = "儲存更新";
+                text.innerText = "儲存同步";
             }
         }
 
