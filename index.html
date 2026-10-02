@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>理財計畫</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b5a42' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12V7H5a2 2 0 0 1 0-4h14v4'/%3E%3Cpath d='M3 5v14a2 2 0 0 0 2 2h16v-5'/%3E%3Cpath d='M18 12a2 2 0 0 0 0 4h4v-4Z'/%3E%3C/svg%3E">
     <!-- iPhone 圖示 -->
     <link rel="apple-touch-icon" href="https://img.icons8.com/ios/180/8b5a42/wallet.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -32,7 +33,18 @@
         <!-- 1. 現金與目標 -->
         <section>
             <div class="glass-card rounded-3xl p-6 shadow-sm">
-                <h2 class="text-sm font-semibold text-gray-500 mb-1">實際可動用現金 (扣除卡費與房貸)</h2>
+                
+                <!-- 頂部：標題與右上角按鈕 -->
+                <div class="flex justify-between items-center mb-1">
+                    <h2 class="text-sm font-semibold text-gray-500">實際可動用現金 (扣除卡費與房貸)</h2>
+                    
+                    <!-- 🌟 智能繳款按鈕 (移至右上角並縮小為精緻膠囊狀) -->
+                    <button onclick="payCreditCards()" class="bg-white/60 hover:bg-red-50 border border-red-200 text-red-500 text-xs font-bold py-1.5 px-3 rounded-full flex items-center gap-1 shadow-sm transition-all active:scale-95">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                        一鍵繳卡費
+                    </button>
+                </div>
+
                 <div class="text-4xl font-extrabold text-milktea-900 tracking-tight" id="available-cash">讀取中...</div>
                 
                 <div class="mt-4 flex gap-6 text-sm">
@@ -40,13 +52,7 @@
                     <div><span class="text-gray-400">未出帳卡費 </span><span class="font-bold text-red-400" id="total-credit">...</span></div>
                 </div>
 
-                <!-- 🌟 智能繳卡費按鈕 -->
-                <button onclick="payCreditCards()" class="mt-5 w-full bg-white/50 hover:bg-white/80 border border-red-200 text-red-500 font-bold py-2.5 rounded-xl transition-colors shadow-sm flex justify-center items-center gap-2 text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
-                    執行本月智能繳卡費
-                </button>
-
-                <div class="mt-5 pt-5 border-t border-white/50">
+                <div class="mt-6 pt-5 border-t border-white/50">
                     <div class="flex justify-between text-sm mb-2">
                         <span class="text-gray-500 font-semibold text-xs">本月五年計畫達標率</span>
                         <span class="text-milktea-900 font-bold" id="cash-progress-text">...%</span>
