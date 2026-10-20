@@ -1,0 +1,1 @@
+{"name":"finance-dashboard","private":true,"scripts":{"build":"mkdir -p public && tailwindcss -i src.css -o public/style.css --minify && cp index.html manifest.json sw.js icon-192.png icon-512.png public/"},"devDependencies":{"tailwindcss":"^3.4.0"}}
