@@ -1,330 +1,176 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>理財計畫</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b5a42' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12V7H5a2 2 0 0 1 0-4h14v4'/%3E%3Cpath d='M3 5v14a2 2 0 0 0 2 2h16v-5'/%3E%3Cpath d='M18 12a2 2 0 0 0 0 4h4v-4Z'/%3E%3C/svg%3E">
-    <!-- iPhone 圖示 -->
-    <link rel="apple-touch-icon" href="https://img.icons8.com/ios/180/8b5a42/wallet.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="理財計畫">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { theme: { extend: { colors: { milktea: { 50: '#fdf8f5', 100: '#f8efe6', 200: '#eddcd0', 300: '#dcb8a3', 800: '#8b5a42', 900: '#734833' }}}} }
-    </script>
-    <style>
-        .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
-        ::-webkit-scrollbar { display: none; }
-        .progress-bar-fill { transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
-        body.modal-open { overflow: hidden; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>理財計畫</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b5a42' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12V7H5a2 2 0 0 1 0-4h14v4'/%3E%3Cpath d='M3 5v14a2 2 0 0 0 2 2h16v-5'/%3E%3Cpath d='M18 12a2 2 0 0 0 0 4h4v-4Z'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="https://img.icons8.com/ios/180/8b5a42/wallet.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="理財計畫">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={theme:{extend:{colors:{milktea:{50:'#fdf8f5',100:'#f8efe6',200:'#eddcd0',300:'#dcb8a3',800:'#8b5a42',900:'#734833'}}}}}</script>
+<style>
+.glass{background:rgba(255,255,255,.7);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.3)}
+::-webkit-scrollbar{display:none}
+.bar{transition:width 1.2s cubic-bezier(.4,0,.2,1)}
+.inp{width:100%;background:#fff;border-radius:.5rem;padding:.25rem .5rem;text-align:right;border:2px solid transparent}
+.inp.chg{border-color:#fcd34d}
+body.mo{overflow:hidden}
+body{padding-bottom:calc(8rem + env(safe-area-inset-bottom))}
+</style>
 </head>
-<body class="bg-milktea-100 text-milktea-900 font-sans min-h-screen p-4 sm:p-8 pb-32">
+<body class="bg-milktea-100 text-milktea-900 font-sans min-h-screen p-4 sm:p-8">
 
-    <nav class="glass-card sticky top-0 z-40 max-w-2xl mx-auto rounded-2xl p-4 mb-6 shadow-sm flex justify-between items-center">
-        <h1 class="text-xl font-bold tracking-wider text-milktea-800">Finance Dashboard</h1>
-        <div id="status-indicator" class="text-sm font-medium text-gray-500 animate-pulse">資料同步中...</div>
-    </nav>
+<nav class="glass sticky top-0 z-40 max-w-2xl mx-auto rounded-2xl p-4 mb-6 shadow-sm flex justify-between items-center">
+  <div><h1 class="text-xl font-bold tracking-wider text-milktea-800">Finance Dashboard</h1>
+  <div id="status" class="text-xs text-gray-500">載入中…</div></div>
+  <button onclick="toggleHide()" id="eye" class="text-2xl px-2" aria-label="隱藏金額">👁</button>
+</nav>
 
-    <main class="max-w-2xl mx-auto space-y-8">
-        <!-- 1. 現金與目標 -->
-        <section>
-            <div class="glass-card rounded-3xl p-6 shadow-sm">
-                
-                <!-- 頂部：標題與右上角按鈕 -->
-                <div class="flex justify-between items-center mb-1">
-                    <h2 class="text-sm font-semibold text-gray-500">實際可動用現金 (扣除卡費與房貸)</h2>
-                    
-                    <!-- 🌟 智能繳款按鈕 (移至右上角並縮小為精緻膠囊狀) -->
-                    <button onclick="payCreditCards()" class="bg-white/60 hover:bg-red-50 border border-red-200 text-red-500 text-xs font-bold py-1.5 px-3 rounded-full flex items-center gap-1 shadow-sm transition-all active:scale-95">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
-                        一鍵繳卡費
-                    </button>
-                </div>
+<main id="app" class="max-w-2xl mx-auto space-y-8">
+  <div class="glass rounded-3xl p-6 space-y-3 animate-pulse"><div class="h-4 w-40 bg-milktea-200 rounded"></div><div class="h-10 w-56 bg-milktea-200 rounded"></div><div class="h-3 bg-milktea-200 rounded"></div></div>
+  <div class="glass rounded-3xl p-6 h-40 animate-pulse"></div>
+</main>
 
-                <div class="text-4xl font-extrabold text-milktea-900 tracking-tight" id="available-cash">讀取中...</div>
-                
-                <div class="mt-4 flex gap-6 text-sm">
-                    <div><span class="text-gray-400">銀行總額 </span><span class="font-bold text-gray-700" id="total-cash">...</span></div>
-                    <div><span class="text-gray-400">未出帳卡費 </span><span class="font-bold text-red-400" id="total-credit">...</span></div>
-                </div>
+<button onclick="openModal()" class="fixed right-6 bg-milktea-800 hover:bg-milktea-900 text-white shadow-xl rounded-full py-4 px-6 font-bold z-40 active:scale-95 transition-transform" style="bottom:calc(1.5rem + env(safe-area-inset-bottom))">✏️ 全面更新</button>
 
-                <div class="mt-6 pt-5 border-t border-white/50">
-                    <div class="flex justify-between text-sm mb-2">
-                        <span class="text-gray-500 font-semibold text-xs">本月五年計畫達標率</span>
-                        <span class="text-milktea-900 font-bold" id="cash-progress-text">...%</span>
-                    </div>
-                    <div class="w-full bg-white/60 rounded-full h-3 mb-1.5 overflow-hidden shadow-inner">
-                        <div id="cash-progress-bar" class="progress-bar-fill bg-green-400 h-3 rounded-full" style="width: 0%"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 2. 親友借款進度 -->
-        <section>
-            <div class="flex justify-between items-end mb-3 pl-2">
-                <h3 class="text-lg font-bold text-milktea-800">親友借款進度</h3>
-                <span class="text-sm font-bold text-red-400" id="total-remaining-debt">剩餘待還: ...</span>
-            </div>
-            <div class="glass-card rounded-3xl p-6 shadow-sm space-y-5" id="debts-container"></div>
-        </section>
-
-        <!-- 3. 股票投資部位 -->
-        <section>
-            <h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">股票資產部位</h3>
-            <div class="glass-card rounded-3xl p-6 shadow-sm">
-                <div class="flex justify-between items-end mb-6 border-b border-gray-200/50 pb-4">
-                    <div><h2 class="text-sm font-semibold text-gray-500 mb-1">總現值</h2><div class="text-3xl font-extrabold text-milktea-900" id="total-stock-value">讀取中...</div></div>
-                    <div class="text-right"><h2 class="text-sm font-semibold text-gray-500 mb-1">未實現損益</h2><div class="text-xl font-bold" id="total-stock-pl">...</div></div>
-                </div>
-                <div id="stocks-container" class="space-y-2"></div>
-            </div>
-        </section>
-
-        <!-- 4. 帳戶明細 -->
-        <section>
-            <h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">各帳戶餘額明細</h3>
-            <div id="accounts-container" class="grid grid-cols-2 gap-4"></div>
-        </section>
-    </main>
-
-    <!-- 浮動更新按鈕 -->
-    <button onclick="openUpdateModal()" class="fixed bottom-8 right-8 bg-milktea-800 hover:bg-milktea-900 text-white shadow-xl shadow-milktea-800/30 rounded-full py-4 px-6 font-bold flex items-center gap-2 transition-transform active:scale-95 z-40">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
-        全面更新
-    </button>
-
-    <!-- 更新視窗 -->
-    <div id="update-modal" class="hidden fixed inset-0 bg-milktea-900/40 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center items-center">
-        <div class="bg-milktea-50 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 max-h-[90vh] flex flex-col shadow-2xl">
-            <h2 class="text-xl font-bold text-milktea-900 mb-2">更新財務紀錄</h2>
-            <form id="update-form" onsubmit="submitUpdates(event)" class="overflow-y-auto pr-2 pb-4 space-y-6 flex-1 mt-4"></form>
-            <div class="flex gap-3 pt-4 border-t border-gray-200 mt-2">
-                <button type="button" onclick="closeUpdateModal()" class="flex-1 py-3 rounded-xl bg-gray-200 text-gray-700 font-bold">取消</button>
-                <button type="submit" form="update-form" id="submit-btn" class="flex-1 py-3 rounded-xl bg-milktea-800 text-white font-bold"><span id="submit-text">儲存同步</span></button>
-            </div>
-        </div>
+<div id="modal" class="hidden fixed inset-0 bg-milktea-900/40 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center items-center">
+  <div class="bg-milktea-50 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 max-h-[92vh] flex flex-col shadow-2xl" style="padding-bottom:calc(1.5rem + env(safe-area-inset-bottom))">
+    <h2 class="text-xl font-bold">更新財務紀錄</h2>
+    <form id="form" onsubmit="save(event)" class="overflow-y-auto space-y-3 flex-1 mt-3 pb-3"></form>
+    <div id="preview" class="text-sm font-bold text-center py-2 border-t border-gray-200"></div>
+    <div class="flex gap-3">
+      <button type="button" onclick="closeModal()" class="flex-1 py-3 rounded-xl bg-gray-200 font-bold">取消</button>
+      <button type="submit" form="form" id="sbtn" class="flex-1 py-3 rounded-xl bg-milktea-800 text-white font-bold">儲存同步</button>
     </div>
+  </div>
+</div>
+<div id="toast" class="fixed left-1/2 -translate-x-1/2 top-4 z-[60] hidden bg-milktea-900 text-white text-sm px-4 py-2 rounded-full shadow-lg"></div>
 
-    <script>
-        // 🚨 務必填入您的 API URL
-        const API_URL = 'https://script.google.com/macros/s/AKfycbwj76l1AQdNBzsVSYo21fQsIY5pJdDCcNQ7MXWNc4Wp7Agc3vGp4jXC5IZDwZfCirVfSQ/exec';
-        
-        let globalData = {}; 
-        const formatMoney = (num) => new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD', minimumFractionDigits: 0 }).format(num);
+<script>
+// 🔧 只需改這一行：貼上 Apps Script 部署網址
+const API_URL = '請貼上你的 Apps Script 網址';
 
-// 帶有自動重試機制的讀取功能
-        async function fetchFinancialData(retryCount = 0) {
-            try {
-                // 如果是重試狀態，更新一下文字讓您知道系統正在努力
-                if (retryCount > 0) {
-                    document.getElementById('status-indicator').innerText = `喚醒伺服器中 (${retryCount}/2)...`;
-                }
+const $ = id => document.getElementById(id);
+const fm = n => new Intl.NumberFormat('zh-TW',{style:'currency',currency:'TWD',maximumFractionDigits:0}).format(n);
+let D = null, hide = localStorage.getItem('hide') === '1';
+const M = n => hide ? '＊＊＊＊' : fm(n);
+const tok = () => localStorage.getItem('tok') || '';
+const hhmm = ts => new Date(ts).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
 
-                const response = await fetch(API_URL);
-                const data = await response.json();
+function toast(t){ const el=$('toast'); el.textContent=t; el.classList.remove('hidden'); setTimeout(()=>el.classList.add('hidden'),2500); }
+function toggleHide(){ hide=!hide; localStorage.setItem('hide',hide?'1':'0'); render(); }
+function setStatus(t,cls='text-gray-500'){ const s=$('status'); s.textContent=t; s.className='text-xs '+cls; }
 
-                if (data.status === "success") {
-                    globalData = data; 
-                    
-                    const availableCash = data.cashData.availableCash;
-                    const targetCash = data.targetData.currentTarget;
+// 先秀快取、背景更新（stale-while-revalidate）
+async function load(retry=0){
+  if(!D){ try{ const c=JSON.parse(localStorage.getItem('cache')||'null'); if(c){ D=c.d; render(); setStatus('快取 '+hhmm(c.t)+'・更新中…'); } }catch(e){} }
+  if(!tok()){ const t=prompt('請輸入存取密碼'); if(!t){ setStatus('未輸入密碼','text-amber-700'); return; } localStorage.setItem('tok',t); }
+  try{
+    const r = await fetch(API_URL+'?token='+encodeURIComponent(tok()));
+    const j = await r.json();
+    if(j.message==='unauthorized'){ localStorage.removeItem('tok'); toast('密碼錯誤'); return load(); }
+    if(j.status!=='success') throw new Error(j.message||'error');
+    D=j; localStorage.setItem('cache',JSON.stringify({t:Date.now(),d:j}));
+    render(); setStatus('已同步 '+hhmm(Date.now()),'text-green-600');
+  }catch(e){
+    if(retry<2){ setStatus(`喚醒伺服器中 (${retry+1}/2)…`); setTimeout(()=>load(retry+1),1500); }
+    else setStatus(D?'離線：顯示上次資料':'連線失敗','text-amber-700');
+  }
+}
 
-                    document.getElementById('available-cash').innerText = formatMoney(availableCash);
-                    document.getElementById('total-cash').innerText = formatMoney(data.cashData.totalCash);
-                    document.getElementById('total-credit').innerText = formatMoney(data.cashData.totalCreditCardDebt);
-                    
-                    const cashProgress = Math.min((availableCash / targetCash) * 100, 100).toFixed(1);
-                    document.getElementById('cash-progress-text').innerText = `${cashProgress}%`;
-                    setTimeout(() => { document.getElementById('cash-progress-bar').style.width = `${cashProgress}%`; }, 100);
+function chart(s, nowAvail){
+  if(s.length<2) return '';
+  const W=320,H=110,P=8, vs=s.flatMap(x=>[x.target,x.actual]).filter(v=>v!=null);
+  const lo=Math.min(...vs), hi=Math.max(...vs);
+  const X=i=>P+i*(W-2*P)/(s.length-1), Y=v=>H-P-(v-lo)/(hi-lo||1)*(H-2*P);
+  const path=k=>{let d='',m=false; s.forEach((x,i)=>{ if(x[k]==null){m=false;return;} d+=(m?'L':'M')+X(i).toFixed(1)+' '+Y(x[k]).toFixed(1); m=true; }); return d;};
+  const n=new Date(), ym=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'), ni=s.findIndex(x=>x.m===ym);
+  const dot = ni>=0 ? `<line x1="${X(ni)}" x2="${X(ni)}" y1="${P}" y2="${H-P}" stroke="#dcb8a3" stroke-dasharray="2 3"/><circle cx="${X(ni)}" cy="${Y(Math.max(lo,Math.min(hi,nowAvail)))}" r="4" fill="#8b5a42"/>` : '';
+  return `<svg viewBox="0 0 ${W} ${H}" class="w-full"><path d="${path('target')}" fill="none" stroke="#dcb8a3" stroke-width="2" stroke-dasharray="4 3"/><path d="${path('actual')}" fill="none" stroke="#8b5a42" stroke-width="2.5"/>${dot}</svg>
+  <div class="flex justify-between text-xs text-gray-500 mt-1"><span>${s[0].m}</span><span><span class="text-milktea-300">╌╌</span> 計畫　<span class="text-milktea-800">━━</span> 實際　● 現在</span><span>${s[s.length-1].m}</span></div>`;
+}
 
-                    if (data.debtData) {
-                        document.getElementById('total-remaining-debt').innerText = `剩餘總額: ${formatMoney(data.debtData.totalRemaining)}`;
-                        const debtsContainer = document.getElementById('debts-container');
-                        debtsContainer.innerHTML = '';
-                        data.debtData.debts.forEach(debt => {
-                            if (debt.remaining > 0) { 
-                                const debtUI = document.createElement('div');
-                                debtUI.innerHTML = `
-                                    <div class="flex justify-between items-end mb-1.5">
-                                        <span class="text-gray-700 font-bold">${debt.name}</span>
-                                        <span class="text-xs text-gray-500">已還 ${debt.progress}% / 剩 ${formatMoney(debt.remaining)}</span>
-                                    </div>
-                                    <div class="w-full bg-white/60 rounded-full h-2.5 overflow-hidden">
-                                        <div class="progress-bar-fill bg-milktea-800 h-2.5 rounded-full" style="width: 0%"></div>
-                                    </div>
-                                `;
-                                debtsContainer.appendChild(debtUI);
-                                setTimeout(() => debtUI.querySelector('.progress-bar-fill').style.width = `${debt.progress}%`, 200);
-                            }
-                        });
-                    }
+function render(){
+  const c=D.cashData, st=D.stockData, db=D.debtData, tg=D.targetData;
+  const avail=c.availableCash, target=tg.currentTarget, delta=avail-target, ahead=delta>=0;
+  const pct=Math.max(0,Math.min(avail/target*100,100)).toFixed(1);
+  const net=c.totalCash+(st?st.totalMarketValue:0)-c.totalCreditCardDebt-db.totalRemaining;
 
-                    document.getElementById('total-stock-value').innerText = formatMoney(data.stockData.totalMarketValue);
-                    const plElement = document.getElementById('total-stock-pl');
-                    const isPlPositive = data.stockData.totalPL >= 0;
-                    plElement.innerText = (isPlPositive ? '+' : '') + formatMoney(data.stockData.totalPL);
-                    plElement.className = isPlPositive ? "text-xl font-bold text-red-500" : "text-xl font-bold text-green-500";
-                    
-                    const stockContainer = document.getElementById('stocks-container');
-                    stockContainer.innerHTML = '';
-                    data.stockData.holdings.forEach(stock => {
-                        const isPositive = stock.profitLoss >= 0;
-                        stockContainer.innerHTML += `
-                            <div class="flex justify-between items-center p-3 hover:bg-white/40 rounded-xl">
-                                <div><div class="font-bold text-milktea-900">${stock.name}</div><div class="text-xs text-gray-500 mt-0.5">${stock.shares} 股</div></div>
-                                <div class="text-right"><div class="font-bold text-gray-800">${formatMoney(stock.marketValue)}</div>
-                                <div class="text-sm ${isPositive ? 'text-red-500' : 'text-green-500'} font-medium">${isPositive ? '+' : ''}${formatMoney(stock.profitLoss)}</div></div>
-                            </div>
-                        `;
-                    });
+  let h=`<section class="glass rounded-3xl p-6 shadow-sm">
+    <h2 class="text-sm font-semibold text-gray-500">實際可動用現金（已扣卡費與房貸 ${M(c.mortgage)}）</h2>
+    <div class="text-4xl font-extrabold tracking-tight mt-1">${M(avail)}</div>
+    <div class="mt-2 inline-block text-sm font-bold px-3 py-1 rounded-full ${ahead?'bg-green-100 text-green-700':'bg-amber-100 text-amber-800'}">${ahead?'超前':'落後'}本月計畫 ${M(Math.abs(delta))}</div>
+    <div class="w-full bg-white/60 rounded-full h-2.5 mt-4 overflow-hidden"><div class="bar ${ahead?'bg-green-400':'bg-amber-400'} h-2.5 rounded-full" id="pb" style="width:0%"></div></div>
+    <div class="text-xs text-gray-400 mt-1">本月目標 ${M(target)}・達成 ${(avail/target*100).toFixed(0)}%</div>
+    <div class="mt-4 pt-4 border-t border-white/60 grid grid-cols-3 gap-2 text-sm">
+      <div><div class="text-gray-400 text-xs">銀行總額</div><b>${M(c.totalCash)}</b></div>
+      <div><div class="text-gray-400 text-xs">未出帳卡費</div><b class="text-amber-700">${M(c.totalCreditCardDebt)}</b></div>
+      <div><div class="text-gray-400 text-xs">淨資產</div><b>${M(net)}</b></div>
+    </div></section>`;
 
-                    const accContainer = document.getElementById('accounts-container');
-                    accContainer.innerHTML = ''; 
-                    data.cashData.accounts.forEach(acc => {
-                        accContainer.innerHTML += `
-                            <div class="glass-card rounded-2xl p-4 shadow-sm flex flex-col justify-between">
-                                <span class="text-sm text-gray-500 font-medium">${acc.name}</span>
-                                <span class="text-lg font-bold text-milktea-900 mt-1">${formatMoney(acc.balance)}</span>
-                            </div>
-                        `;
-                    });
+  if(tg.series&&tg.series.length>1) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">計畫 vs 實際</h3><div class="glass rounded-3xl p-5 shadow-sm">${chart(tg.series,avail)}</div></section>`;
 
-                    const status = document.getElementById('status-indicator');
-                    status.innerText = "已同步";
-                    status.classList.replace('text-gray-500', 'text-green-600');
-                    status.classList.remove('animate-pulse');
-                }
-            } catch (error) {
-                // 🔴 核心修改：如果失敗且重試次數小於 2 次，等待 1.5 秒後自動重試
-                if (retryCount < 2) {
-                    console.warn(`第 ${retryCount + 1} 次連線失敗，準備重試...`);
-                    setTimeout(() => fetchFinancialData(retryCount + 1), 1500);
-                } else {
-                    document.getElementById('status-indicator').innerText = "連線失敗";
-                    document.getElementById('status-indicator').classList.add('text-red-500');
-                }
-            }
-        }
+  h+=`<section><div class="flex justify-between items-end mb-3 pl-2"><h3 class="text-lg font-bold text-milktea-800">親友借款進度</h3><span class="text-sm font-bold text-amber-700">剩餘待還 ${M(db.totalRemaining)}</span></div>
+    <div class="glass rounded-3xl p-6 shadow-sm space-y-5">`;
+  h+= db.debts.length ? db.debts.map(d=>`<div><div class="flex justify-between items-end mb-1.5"><b class="text-gray-700">${d.name}</b><span class="text-xs text-gray-500">已還 ${d.progress}%・剩 ${M(d.remaining)}</span></div>
+    <div class="w-full bg-white/60 rounded-full h-2.5 overflow-hidden"><div class="bar db bg-milktea-800 h-2.5 rounded-full" data-w="${d.progress}" style="width:0%"></div></div></div>`).join('') : '<div class="text-center text-gray-500">🎉 借款已全數還清</div>';
+  h+='</div></section>';
 
-        // 🌟 執行一鍵智能繳款邏輯
-        async function payCreditCards() {
-            if (!confirm("確定要執行智能繳款嗎？\n系統將自動從各銀行扣除卡費，若餘額不足將自動由「玉山-台幣」代墊，並將卡費歸零。")) return;
-            
-            document.getElementById('status-indicator').innerText = "扣款執行中...";
-            document.getElementById('status-indicator').classList.add('animate-pulse', 'text-gray-500');
+  if(st){ h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">股票資產部位</h3><div class="glass rounded-3xl p-6 shadow-sm">
+    <div class="flex justify-between items-end mb-4 pb-4 border-b border-gray-200/50"><div><div class="text-sm text-gray-500">總現值</div><div class="text-3xl font-extrabold">${M(st.totalMarketValue)}</div></div>
+    <div class="text-right"><div class="text-sm text-gray-500">未實現損益</div><div class="text-xl font-bold ${st.totalPL>=0?'text-red-500':'text-green-600'}">${st.totalPL>=0?'+':''}${M(st.totalPL)}</div></div></div>`;
+    h+=st.holdings.map(s=>{ const up=s.profitLoss>=0, r=s.cost>0?(s.profitLoss/s.cost*100).toFixed(1):'0.0';
+      return `<div class="flex justify-between items-center p-3 rounded-xl hover:bg-white/40"><div><b>${s.name}</b><div class="text-xs text-gray-500">${s.shares} 股</div></div>
+      <div class="text-right"><b>${M(s.marketValue)}</b><div class="text-sm ${up?'text-red-500':'text-green-600'}">${up?'+':''}${M(s.profitLoss)}（${up?'+':''}${r}%）</div></div></div>`;}).join('');
+    h+='</div></section>'; }
 
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: 'pay_credit_cards' })
-                });
-                await fetchFinancialData(); // 重整畫面
-                alert("✅ 卡費扣款成功！");
-            } catch (error) {
-                alert("執行失敗，請檢查網路連線。");
-            }
-        }
+  h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">各帳戶餘額明細</h3><div class="grid grid-cols-2 gap-4">`+
+    c.accounts.map(a=>`<div class="glass rounded-2xl p-4 shadow-sm"><div class="text-sm text-gray-500">${a.name}</div><div class="text-lg font-bold mt-1">${M(a.balance)}</div>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}</div>`:''}</div>`).join('')+'</div></section>';
 
-        function openUpdateModal() {
-            const form = document.getElementById('update-form');
-            let html = '';
-            
-            html += '<div class="space-y-2"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">🏦 銀行餘額</h3>';
-            globalData.cashData.accounts.forEach(acc => {
-                html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
-                            <label class="text-sm font-bold text-gray-700 w-1/3 truncate">${acc.name}</label>
-                            <input type="number" name="acc_${acc.name}" value="${acc.balance}" class="w-2/3 bg-white rounded-lg py-1 px-2 text-right">
-                         </div>`;
-            });
-            html += '</div>';
+  $('app').innerHTML=h; $('eye').style.opacity=hide?.4:1;
+  setTimeout(()=>{ $('pb').style.width=pct+'%'; document.querySelectorAll('.db').forEach(e=>e.style.width=e.dataset.w+'%'); },80);
+}
 
-            // 🌟 取消過濾，列出「所有銀行」的信用卡輸入框
-            html += '<div class="space-y-2 mt-6"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">💳 信用卡未出帳</h3>';
-            globalData.cashData.accounts.forEach(acc => {
-                html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
-                            <label class="text-sm font-bold text-gray-700 w-1/3 truncate">${acc.name}</label>
-                            <input type="number" name="cc_${acc.name}" value="${acc.ccBill}" class="w-2/3 bg-white rounded-lg py-1 px-2 text-right text-red-500">
-                         </div>`;
-            });
-            html += '</div>';
-
-            if (globalData.debtData && globalData.debtData.debts.length > 0) {
-                html += '<div class="space-y-2 mt-6"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">🤝 親友借款 (已還金額)</h3>';
-                globalData.debtData.debts.forEach(debt => {
-                    html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
-                                <label class="text-sm font-bold text-gray-700 w-1/3 truncate">${debt.name}</label>
-                                <input type="number" name="debt_${debt.rawName}" value="${debt.rawRepaid}" class="w-2/3 bg-white rounded-lg py-1 px-2 text-right text-milktea-900">
-                             </div>`;
-                });
-                html += '</div>';
-            }
-
-            if (globalData.stockData && globalData.stockData.holdings.length > 0) {
-                html += '<div class="space-y-2 mt-6"><h3 class="font-bold text-milktea-800 sticky top-0 bg-milktea-50 py-1 z-10">📈 股票持股數</h3>';
-                globalData.stockData.holdings.forEach(stock => {
-                    html += `<div class="flex items-center justify-between bg-white/50 p-2 rounded-xl">
-                                <label class="text-sm font-bold text-gray-700 w-1/3 truncate">${stock.name}</label>
-                                <input type="number" name="stock_${stock.name}" value="${stock.shares}" class="w-2/3 bg-white rounded-lg py-1 px-2 text-right">
-                             </div>`;
-                });
-                html += '</div>';
-            }
-
-            form.innerHTML = html;
-            document.getElementById('update-modal').classList.remove('hidden');
-            document.body.classList.add('modal-open');
-        }
-
-        function closeUpdateModal() {
-            document.getElementById('update-modal').classList.add('hidden');
-            document.body.classList.remove('modal-open');
-        }
-
-        async function submitUpdates(event) {
-            event.preventDefault();
-            const btn = document.getElementById('submit-btn');
-            const text = document.getElementById('submit-text');
-            btn.disabled = true;
-            text.innerText = "儲存中...";
-
-            const formData = new FormData(event.target);
-            const updates = { accounts: {}, creditCards: {}, debts: {}, stocks: {} };
-            
-            for (let [key, value] of formData.entries()) {
-                const val = Number(value);
-                if (key.startsWith('acc_')) updates.accounts[key.replace('acc_', '')] = val;
-                else if (key.startsWith('cc_')) updates.creditCards[key.replace('cc_', '')] = val;
-                else if (key.startsWith('debt_')) updates.debts[key.replace('debt_', '')] = val;
-                else if (key.startsWith('stock_')) updates.stocks[key.replace('stock_', '')] = val;
-            }
-
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: 'update_all', data: updates })
-                });
-
-                closeUpdateModal();
-                document.getElementById('status-indicator').innerText = "更新資料中...";
-                document.getElementById('status-indicator').classList.add('animate-pulse', 'text-gray-500');
-                
-                await fetchFinancialData(); 
-            } catch (error) {
-                alert("儲存失敗，請確認 Apps Script 已發布為新版本！");
-            } finally {
-                btn.disabled = false;
-                text.innerText = "儲存同步";
-            }
-        }
-
-        window.onload = fetchFinancialData;
-    </script>
+// ===== 更新視窗 =====
+function openModal(){
+  if(!D) return;
+  const c=D.cashData, row=(l,k,i,v,x='')=>`<div class="grid grid-cols-2 gap-2 items-center bg-white/60 p-2 rounded-xl"><label class="text-sm font-bold truncate">${l}</label><input type="text" inputmode="decimal" data-k="${k}" data-i="${i}" data-o="${v}" value="${v}" class="inp ${x}"></div>`;
+  let h='<h3 class="font-bold text-milktea-800">🏦 銀行餘額　／　💳 未出帳卡費</h3><div class="grid grid-cols-3 gap-2 text-xs text-gray-400 px-2"><span></span><span class="text-right">餘額</span><span class="text-right">卡費</span></div>';
+  h+=c.accounts.map((a,i)=>`<div class="grid grid-cols-3 gap-2 items-center bg-white/60 p-2 rounded-xl"><label class="text-sm font-bold truncate">${a.name}</label>
+    <input inputmode="decimal" data-k="a" data-i="${i}" data-o="${a.balance}" value="${a.balance}" class="inp"><input inputmode="decimal" data-k="c" data-i="${i}" data-o="${a.ccBill}" value="${a.ccBill}" class="inp text-amber-700"></div>`).join('');
+  if(D.debtData.debts.length) h+='<h3 class="font-bold text-milktea-800 pt-3">🤝 親友借款（累計已還，輸入正數）</h3>'+D.debtData.debts.map((d,i)=>row(d.name,'d',i,d.repaid)).join('');
+  if(D.stockData&&D.stockData.holdings.length) h+='<h3 class="font-bold text-milktea-800 pt-3">📈 股票持股數</h3>'+D.stockData.holdings.map((s,i)=>row(s.name,'s',i,s.shares)).join('');
+  $('form').innerHTML=h; $('form').oninput=onEdit; onEdit();
+  $('modal').classList.remove('hidden'); document.body.classList.add('mo');
+}
+function closeModal(){ $('modal').classList.add('hidden'); document.body.classList.remove('mo'); }
+function onEdit(){
+  let a=0,c=0;
+  document.querySelectorAll('#form input').forEach(el=>{
+    const v=Number(el.value)||0; el.classList.toggle('chg',v!==Number(el.dataset.o));
+    if(el.dataset.k==='a') a+=v; if(el.dataset.k==='c') c+=v; });
+  const n=a-c-D.cashData.mortgage, d=n-D.cashData.availableCash;
+  $('preview').innerHTML=`更新後可動用現金：${fm(n)}　<span class="${d>=0?'text-green-600':'text-amber-700'}">${d>=0?'+':'−'}${fm(Math.abs(d))}</span>`;
+}
+async function save(ev){
+  ev.preventDefault();
+  const U={accounts:{},creditCards:{},debts:{},stocks:{}}, btn=$('sbtn'); btn.disabled=true; btn.textContent='儲存中…';
+  document.querySelectorAll('#form input').forEach(el=>{
+    const i=+el.dataset.i, v=Number(el.value)||0, k=el.dataset.k;
+    if(k==='a') U.accounts[D.cashData.accounts[i].name]=v;
+    else if(k==='c') U.creditCards[D.cashData.accounts[i].name]=v;
+    else if(k==='d') U.debts[D.debtData.debts[i].rawName]=v;
+    else if(k==='s') U.stocks[D.stockData.holdings[i].name]=v; });
+  try{
+    const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:tok(),action:'update_all',data:U})});
+    const j=await r.json(); if(j.status!=='success') throw new Error(j.message);
+    closeModal(); toast('✅ 已儲存並建立歷史快照'); setStatus('更新資料中…'); await load();
+  }catch(e){ toast('儲存失敗：'+e.message); }
+  finally{ btn.disabled=false; btn.textContent='儲存同步'; }
+}
+window.onload=()=>load();
+</script>
 </body>
 </html>
