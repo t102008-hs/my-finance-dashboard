@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>理財計畫</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b5a42' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12V7H5a2 2 0 0 1 0-4h14v4'/%3E%3Cpath d='M3 5v14a2 2 0 0 0 2 2h16v-5'/%3E%3Cpath d='M18 12a2 2 0 0 0 0 4h4v-4Z'/%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="https://img.icons8.com/ios/180/8b5a42/wallet.png">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#8b5a42">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="理財計畫">
@@ -26,7 +28,7 @@ body{padding-bottom:calc(8rem + env(safe-area-inset-bottom))}
 <nav class="glass sticky top-0 z-40 max-w-2xl mx-auto rounded-2xl p-4 mb-6 shadow-sm flex justify-between items-center">
   <div><h1 class="text-xl font-bold tracking-wider text-milktea-800">Finance Dashboard</h1>
   <div id="status" class="text-xs text-gray-500">載入中…</div></div>
-  <button onclick="toggleHide()" id="eye" class="w-10 h-10 rounded-full bg-white/70 border border-milktea-200 text-milktea-800 flex items-center justify-center active:scale-95 transition" aria-label="隱藏金額"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+  
 </nav>
 
 <main id="app" class="max-w-2xl mx-auto space-y-8">
@@ -50,29 +52,25 @@ body{padding-bottom:calc(8rem + env(safe-area-inset-bottom))}
 <div id="toast" class="fixed left-1/2 -translate-x-1/2 top-4 z-[60] hidden bg-milktea-900 text-white text-sm px-4 py-2 rounded-full shadow-lg"></div>
 
 <script>
-// 🔧 只需改這一行：貼上 Apps Script 部署網址
-const API_URL = 'https://script.google.com/macros/s/AKfycbwj76l1AQdNBzsVSYo21fQsIY5pJdDCcNQ7MXWNc4Wp7Agc3vGp4jXC5IZDwZfCirVfSQ/exec';
+// 資料由 /api/data（Vercel）代理讀寫，網頁內不含 Apps Script 網址與密鑰
+const API_URL = '/api/data';
 
 const $ = id => document.getElementById(id);
 const fm = n => new Intl.NumberFormat('zh-TW',{style:'currency',currency:'TWD',maximumFractionDigits:0}).format(n);
-let D = null, hide = localStorage.getItem('hide') === '1';
-const M = n => hide ? '＊＊＊＊' : fm(n);
+let D = null;
+const M = fm;
 const tok = () => localStorage.getItem('tok') || '';
 const hhmm = ts => new Date(ts).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
 
 function toast(t){ const el=$('toast'); el.textContent=t; el.classList.remove('hidden'); setTimeout(()=>el.classList.add('hidden'),2500); }
-function toggleHide(){ if(!D) return; hide=!hide; localStorage.setItem('hide',hide?'1':'0'); render(); }
 function setStatus(t,cls='text-gray-500'){ const s=$('status'); s.textContent=t; s.className='text-xs '+cls; }
 
 // 先秀快取、背景更新（stale-while-revalidate）
-const EYE=`<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-const EYEOFF=`<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>`;
 async function load(retry=0){
-  if(API_URL.indexOf('script.google.com')<0){ setStatus('尚未設定 API_URL','text-amber-700'); toast('請先在 index.html 填入 Apps Script 網址'); return; }
   if(!D){ try{ const c=JSON.parse(localStorage.getItem('cache')||'null'); if(c){ D=c.d; render(); setStatus('快取 '+hhmm(c.t)+'・更新中…'); } }catch(e){} }
   if(!tok()){ const t=prompt('請輸入存取密碼'); if(!t){ setStatus('未輸入密碼','text-amber-700'); return; } localStorage.setItem('tok',t); }
   try{
-    const r = await fetch(API_URL+'?token='+encodeURIComponent(tok()));
+    const r = await fetch(API_URL,{headers:{'x-pass':tok()}});
     const j = await r.json();
     if(j.message==='unauthorized'){ localStorage.removeItem('tok'); toast('密碼錯誤'); return load(); }
     if(j.status!=='success') throw new Error(j.message||'error');
@@ -96,6 +94,13 @@ function chart(s, nowAvail){
   <div class="flex justify-between text-xs text-gray-500 mt-1"><span>${s[0].m}</span><span><span class="text-milktea-300">╌╌</span> 計畫　<span class="text-milktea-800">━━</span> 實際　● 現在</span><span>${s[s.length-1].m}</span></div>`;
 }
 
+function spark(hs){
+  const W=320,H=100,P=8,vs=hs.map(x=>x.net),lo=Math.min(...vs),hi=Math.max(...vs);
+  const X=i=>P+i*(W-2*P)/(hs.length-1),Y=v=>H-P-(v-lo)/(hi-lo||1)*(H-2*P);
+  const d=hs.map((x,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(x.net).toFixed(1)).join('');
+  const f=t=>new Date(t).toLocaleDateString('zh-TW',{year:'2-digit',month:'numeric',day:'numeric'}), ch=hs[hs.length-1].net-hs[0].net;
+  return `<svg viewBox="0 0 ${W} ${H}" class="w-full"><path d="${d}" fill="none" stroke="#8b5a42" stroke-width="2.5"/>${hs.map((x,i)=>`<circle cx="${X(i)}" cy="${Y(x.net)}" r="3" fill="#8b5a42"/>`).join('')}</svg><div class="flex justify-between text-xs text-gray-500 mt-1"><span>${f(hs[0].t)}</span><span>期間變化 ${ch>=0?'+':'−'}${fm(Math.abs(ch))}</span><span>${f(hs[hs.length-1].t)}</span></div>`;
+}
 function render(){
   const c=D.cashData, st=D.stockData, db=D.debtData, tg=D.targetData;
   const avail=c.availableCash, target=tg.currentTarget, delta=avail-target, ahead=delta>=0;
@@ -114,6 +119,10 @@ function render(){
       <div><div class="text-gray-400 text-xs">淨資產</div><b>${M(net)}</b></div>
     </div></section>`;
 
+  const hist=D.history||[];
+  if(hist.length){ const days=Math.floor((Date.now()-new Date(hist[hist.length-1].t))/864e5);
+    if(days>35) h=`<div class="rounded-2xl bg-amber-100 text-amber-800 text-sm font-bold px-4 py-3">⚠️ 已 ${days} 天沒有更新，數字可能已過期</div>`+h; }
+  if(hist.length>1) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">淨資產走勢</h3><div class="glass rounded-3xl p-5 shadow-sm">${spark(hist)}</div></section>`;
   if(tg.series&&tg.series.length>1) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">計畫 vs 實際</h3><div class="glass rounded-3xl p-5 shadow-sm">${chart(tg.series,avail)}</div></section>`;
 
   h+=`<section><div class="flex justify-between items-end mb-3 pl-2"><h3 class="text-lg font-bold text-milktea-800">親友借款進度</h3><span class="text-sm font-bold text-amber-700">剩餘待還 ${M(db.totalRemaining)}</span></div>
@@ -133,7 +142,7 @@ function render(){
   h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">各帳戶餘額明細</h3><div class="grid grid-cols-2 gap-4">`+
     c.accounts.map(a=>`<div class="glass rounded-2xl p-4 shadow-sm"><div class="text-sm text-gray-500">${a.name}</div><div class="text-lg font-bold mt-1">${M(a.balance)}</div>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}</div>`:''}</div>`).join('')+'</div></section>';
 
-  $('app').innerHTML=h; $('eye').innerHTML=hide?EYEOFF:EYE;
+  $('app').innerHTML=h; 
   setTimeout(()=>{ $('pb').style.width=pct+'%'; document.querySelectorAll('.db').forEach(e=>e.style.width=e.dataset.w+'%'); },80);
 }
 
@@ -167,13 +176,16 @@ async function save(ev){
     else if(k==='c') U.creditCards[D.cashData.accounts[i].name]=v;
     else if(k==='d') U.debts[D.debtData.debts[i].rawName]=v;
     else if(k==='s') U.stocks[D.stockData.holdings[i].name]=v; });
+  const odd=[]; document.querySelectorAll('#form input[data-k="a"]').forEach(el=>{const o=Number(el.dataset.o),v=Number(el.value)||0; if(o>0&&Math.abs(v-o)>10000&&Math.abs(v-o)/o>0.5) odd.push(D.cashData.accounts[+el.dataset.i].name+'：'+fm(o)+' → '+fm(v));});
+  if(odd.length&&!confirm('以下帳戶變動超過 50%，確定嗎？\n'+odd.join('\n'))){ btn.disabled=false; btn.textContent='儲存同步'; return; }
   try{
-    const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({token:tok(),action:'update_all',data:U})});
+    const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','x-pass':tok()},body:JSON.stringify({action:'update_all',data:U})});
     const j=await r.json(); if(j.status!=='success') throw new Error(j.message);
     closeModal(); toast('✅ 已儲存並建立歷史快照'); setStatus('更新資料中…'); await load();
   }catch(e){ toast('儲存失敗：'+e.message); }
   finally{ btn.disabled=false; btn.textContent='儲存同步'; }
 }
+if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
 window.onload=()=>load();
 </script>
 </body>
