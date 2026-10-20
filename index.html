@@ -7,7 +7,8 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b5a42' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 12V7H5a2 2 0 0 1 0-4h14v4'/%3E%3Cpath d='M3 5v14a2 2 0 0 0 2 2h16v-5'/%3E%3Cpath d='M18 12a2 2 0 0 0 0 4h4v-4Z'/%3E%3C/svg%3E">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#8b5a42">
+<meta name="theme-color" content="#8b5a42" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17110e" media="(prefers-color-scheme: dark)">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="理財計畫">
@@ -112,7 +113,7 @@ function render(){
   const net=c.totalCash+(st?st.totalMarketValue:0)-c.totalCreditCardDebt-db.totalRemaining;
 
   let h=`<section class="glass rounded-3xl p-6 shadow-sm">
-    <h2 class="text-sm font-semibold text-gray-500">實際可動用現金（已扣卡費與房貸 ${M(c.mortgage)}）</h2>
+    <h2 class="text-sm font-semibold text-gray-500">實際可動用現金（已扣卡費${c.mortgagePending?'與預扣房貸 '+M(c.mortgage):'・本月房貸已扣款'}）</h2>
     <div class="text-4xl font-extrabold tracking-tight mt-1">${M(avail)}</div>
     <div class="mt-2 inline-block text-sm font-bold px-3 py-1 rounded-full ${ahead?'bg-green-100 text-green-700':'bg-amber-100 text-amber-800'}">${ahead?'超前':'落後'}本月計畫 ${M(Math.abs(delta))}</div>
     <div class="w-full bg-white/60 rounded-full h-2.5 mt-4 overflow-hidden"><div class="bar ${ahead?'bg-green-400':'bg-amber-400'} h-2.5 rounded-full" id="pb" style="width:0%"></div></div>
@@ -143,13 +144,13 @@ function render(){
       <div class="text-right"><b>${M(s.marketValue)}</b><div class="text-sm ${up?'text-red-500':'text-green-600'}">${up?'+':''}${M(s.profitLoss)}（${up?'+':''}${r}%）</div></div></div>`;}).join('');
     h+='</div></section>'; }
 
+  h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">各帳戶餘額明細</h3><div class="grid grid-cols-2 gap-4">`+
+    c.accounts.map(a=>`<div class="glass rounded-2xl p-4 shadow-sm"><div class="text-sm text-gray-500">${a.name}</div><div class="text-lg font-bold mt-1">${M(a.balance)}</div>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}</div>`:''}</div>`).join('')+'</div></section>';
+
   h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">情境模擬</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-3" id="sim">
     ${st?st.holdings.map(s=>`<label class="flex justify-between items-center text-sm"><span><input type="checkbox" class="sim-s mr-2" data-v="${s.marketValue}">賣出 ${s.name}</span><b>${M(s.marketValue)}</b></label>`).join(''):''}
     ${db.debts.map(d=>`<label class="flex justify-between items-center text-sm gap-3"><span class="shrink-0">提前還 ${d.name}</span><input inputmode="decimal" placeholder="0" class="inp sim-d" style="max-width:8rem" data-max="${d.remaining}"></label>`).join('')}
     <div id="simout" class="text-sm font-bold pt-3 border-t border-white/60"></div></div></section>`;
-  h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">各帳戶餘額明細</h3><div class="grid grid-cols-2 gap-4">`+
-    c.accounts.map(a=>`<div class="glass rounded-2xl p-4 shadow-sm"><div class="text-sm text-gray-500">${a.name}</div><div class="text-lg font-bold mt-1">${M(a.balance)}</div>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}</div>`:''}</div>`).join('')+'</div></section>';
-
   $('app').innerHTML=h; $('sim').oninput=simCalc; simCalc(); 
   setTimeout(()=>{ $('pb').style.width=pct+'%'; document.querySelectorAll('.db').forEach(e=>e.style.width=e.dataset.w+'%'); },80);
 }
@@ -172,7 +173,7 @@ function onEdit(){
   document.querySelectorAll('#form input').forEach(el=>{
     const v=Number(el.value)||0; el.classList.toggle('chg',v!==Number(el.dataset.o));
     if(el.dataset.k==='a') a+=v; if(el.dataset.k==='c') c+=v; });
-  const n=a-c-D.cashData.mortgage, d=n-D.cashData.availableCash;
+  const mAfter=new Date().getDate()>=((D.config&&D.config.mortgageDay)||3)?0:D.cashData.mortgage, n=a-c-mAfter, d=n-D.cashData.availableCash;
   $('preview').innerHTML=`更新後可動用現金：${fm(n)}　<span class="${d>=0?'text-green-600':'text-amber-700'}">${d>=0?'+':'−'}${fm(Math.abs(d))}</span>`;
 }
 async function save(ev){
