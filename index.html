@@ -145,7 +145,7 @@ function render(){
     h+='</div></section>'; }
 
   h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">各帳戶餘額明細</h3><div class="grid grid-cols-2 gap-4">`+
-    c.accounts.map(a=>`<div class="glass rounded-2xl p-4 shadow-sm"><div class="text-sm text-gray-500">${a.name}</div><div class="text-lg font-bold mt-1">${M(a.balance)}</div>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}</div>`:''}</div>`).join('')+'</div></section>';
+    c.accounts.map(a=>`<div class="glass rounded-2xl p-4 shadow-sm"><div class="text-sm text-gray-500">${a.name}</div><div class="text-lg font-bold mt-1">${M(a.balance)}</div>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}${a.ccDay?'・'+a.ccDay+' 日自動扣':''}</div>`:''}</div>`).join('')+'</div></section>';
 
   h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">情境模擬</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-3" id="sim">
     ${st?st.holdings.map(s=>`<label class="flex justify-between items-center text-sm"><span><input type="checkbox" class="sim-s mr-2" data-v="${s.marketValue}">賣出 ${s.name}</span><b>${M(s.marketValue)}</b></label>`).join(''):''}
