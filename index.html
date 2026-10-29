@@ -112,7 +112,7 @@ function flowCard(){
   ev.sort((x,y)=>x.d-y.d);
   return `<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">本月即將發生</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-3">`+ev.map(e=>`<div class="flex justify-between items-center text-sm"><span><b class="mr-2">${n.getMonth()+1}/${e.d}</b>${e.t}${e.d<td?'（已到期，待更新餘額）':''}</span><span class="text-right"><b class="text-amber-700">${fm(e.a)}</b><div class="text-xs text-gray-400">${e.note}</div></span></div>`).join('')+'</div></section>';
 }
-function sellNet(s){ const f=0.001425*((D.config&&D.config.feeDiscount)||1), t=String(s.ticker).startsWith('00')?0.001:0.003; return Math.round(s.marketValue*(1-f-t)); }
+function sellNet(s){ const f=0.001425*(s.feeDiscount||(D.config&&D.config.feeDiscount)||1), t=String(s.ticker).startsWith('00')?0.001:0.003; return Math.round(s.marketValue*(1-f-t)); }
 async function undo(){
   if(!confirm('確定還原到上一次儲存之前的數字？')) return;
   try{ const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','x-pass':tok()},body:JSON.stringify({action:'undo'})});
@@ -152,7 +152,7 @@ function render(){
     <div class="text-4xl font-extrabold tracking-tight mt-1">${M(avail)}</div>
     ${hasT?`<div class="mt-2 inline-block text-sm font-bold px-3 py-1 rounded-full ${ahead?'bg-green-100 text-green-700':'bg-amber-100 text-amber-800'}">${ahead?'已超過':'距離'}本月底目標 ${M(Math.abs(delta))}${ahead?'':'（尚差）'}</div>
     <div class="w-full bg-white/60 rounded-full h-2.5 mt-4 overflow-hidden"><div class="bar ${ahead?'bg-green-400':'bg-amber-400'} h-2.5 rounded-full" id="pb" style="width:0%"></div></div>
-    <div class="text-xs text-gray-400 mt-1">本月底目標 ${M(target)}・達成 ${(avail/target*100).toFixed(0)}%</div>`:'<div class="text-xs text-gray-400 mt-2">本月尚無計畫目標（在計畫表往後續寫月份即可）</div>'}
+    <div class="text-xs text-gray-400 mt-1">本月底目標 ${M(target)}・達成 ${(avail/target*100).toFixed(0)}%</div>`:''}
     <div class="mt-4 pt-4 border-t border-white/60 grid grid-cols-3 gap-2 text-sm">
       <div><div class="text-gray-400 text-xs">銀行總額</div><b>${M(c.totalCash)}</b></div>
       <div><div class="text-gray-400 text-xs">未出帳卡費</div><b class="text-amber-700">${M(c.totalCreditCardDebt)}</b></div>
@@ -187,7 +187,7 @@ function render(){
     c.accounts.map(a=>`<div class="glass rounded-2xl p-4 shadow-sm"><div class="text-sm text-gray-500">${a.name}</div><div class="text-lg font-bold mt-1">${M(a.balance)}</div>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}${a.ccDay?'・'+a.ccDay+' 日自動扣':''}</div>`:''}</div>`).join('')+'</div></section>';
 
   h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">情境模擬</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-3" id="sim">
-    ${st?st.holdings.map(s=>`<label class="flex justify-between items-center text-sm"><span><input type="checkbox" class="sim-s mr-2" data-v="${sellNet(s)}">賣出 ${s.name}</span><span class="text-right"><b>${M(sellNet(s))}</b><div class="text-xs text-gray-400">已扣手續費與證交稅</div></span></label>`).join(''):''}
+    ${st?st.holdings.map(s=>`<label class="flex justify-between items-center text-sm"><span><input type="checkbox" class="sim-s mr-2" data-v="${sellNet(s)}">賣出 ${s.name}${s.broker?'<span class="text-xs text-gray-400">（'+s.broker+'）</span>':''}</span><span class="text-right"><b>${M(sellNet(s))}</b><div class="text-xs text-gray-400">已扣手續費與證交稅</div></span></label>`).join(''):''}
     ${db.debts.map(d=>`<label class="flex justify-between items-center text-sm gap-3"><span class="shrink-0">提前還 ${d.name}</span><input inputmode="decimal" placeholder="0" class="inp sim-d" style="max-width:8rem" data-max="${d.remaining}"></label>`).join('')}
     <div id="simout" class="text-sm font-bold pt-3 border-t border-white/60"></div></div></section>`;
   $('app').innerHTML=h; drawChart(); $('sim').oninput=simCalc; simCalc(); 
