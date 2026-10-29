@@ -85,6 +85,41 @@ function chart(s, nowAvail){
   <div class="flex justify-between text-xs text-gray-500 mt-1"><span>${s[0].m}</span><span><span class="text-milktea-300">╌╌</span> 計畫　<span class="text-milktea-800">━━</span> 實際　● 現在</span><span>${s[s.length-1].m}</span></div>`;
 }
 
+let CM='line',CR='win';
+function setChart(m,r){ if(m)CM=m; if(r)CR=r; drawChart(); }
+function drawChart(){
+  const box=$('chartbox'); if(!box) return;
+  const all=D.targetData.series, n=new Date(), ym=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'), ni=all.findIndex(x=>x.m===ym);
+  let a=0,b=all.length;
+  if(ni>=0){ if(CR==='win'){a=Math.max(0,ni-3);b=Math.min(all.length,ni+10);} if(CR==='12'){a=Math.max(0,ni-11);b=ni+1;} }
+  const s=all.slice(a,b), btn=(t,on,f)=>`<button onclick="${f}" class="px-3 py-1 rounded-full text-xs font-bold ${on?'bg-milktea-800 text-white':'bg-white/60'}">${t}</button>`;
+  $('chartbar').innerHTML=btn('近期',CR==='win',"setChart(0,'win')")+btn('近12個月',CR==='12',"setChart(0,'12')")+btn('全部',CR==='all',"setChart(0,'all')")+'<span class="flex-1"></span>'+btn('折線',CM==='line',"setChart('line')")+btn('差距',CM==='bar',"setChart('bar')");
+  box.innerHTML=CM==='line'?chart(s,D.cashData.availableCash):bars(s,ym);
+}
+function bars(s,ym){
+  const v=s.map(x=>{const a=x.m===ym?D.cashData.availableCash:x.actual; return {m:x.m,d:a==null?null:a-x.target};}).filter(x=>x.d!=null);
+  if(!v.length) return '<div class="text-sm text-gray-500 text-center py-6">這個範圍內還沒有實際資料</div>';
+  const W=320,H=130,P=10,mx=Math.max(...v.map(x=>Math.abs(x.d)),1),bw=Math.min(28,(W-2*P)/v.length-4),mid=H/2-6;
+  const r=v.map((x,i)=>{const h=Math.abs(x.d)/mx*(mid-P),cx=P+(i+.5)*(W-2*P)/v.length,y=x.d>=0?mid-h:mid;
+    return `<rect x="${(cx-bw/2).toFixed(1)}" y="${y.toFixed(1)}" width="${bw}" height="${Math.max(h,1).toFixed(1)}" rx="3" fill="${x.d>=0?'#5fae7c':'#e0a43a'}"/>`;}).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" class="w-full"><line x1="${P}" x2="${W-P}" y1="${mid}" y2="${mid}" stroke="#dcb8a3"/>${r}</svg><div class="flex justify-between text-xs text-gray-500 mt-1"><span>${v[0].m}</span><span>實際 − 月底目標（綠＝超前　黃＝落後）</span><span>${v[v.length-1].m}</span></div>`;
+}
+function flowCard(){
+  const c=D.cashData,cf=D.config||{},n=new Date(),td=n.getDate(),dim=new Date(n.getFullYear(),n.getMonth()+1,0).getDate(),cl=d=>Math.min(d,dim),ev=[];
+  if(c.mortgagePending) ev.push({d:cl(cf.mortgageDay||3),t:'🏠 房貸扣款',a:c.mortgage,note:'已從可動用現金預扣'});
+  c.accounts.forEach(a=>{ if(a.ccDay&&a.ccBill>0&&cl(a.ccDay)>=td) ev.push({d:cl(a.ccDay),t:'💳 '+a.name+' 卡費',a:a.ccBill,note:'自動扣款，不影響可動用現金'}); });
+  if(!ev.length) return '';
+  ev.sort((x,y)=>x.d-y.d);
+  return `<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">本月即將發生</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-3">`+ev.map(e=>`<div class="flex justify-between items-center text-sm"><span><b class="mr-2">${n.getMonth()+1}/${e.d}</b>${e.t}${e.d<td?'（已到期，待更新餘額）':''}</span><span class="text-right"><b class="text-amber-700">${fm(e.a)}</b><div class="text-xs text-gray-400">${e.note}</div></span></div>`).join('')+'</div></section>';
+}
+function sellNet(s){ const f=0.001425*((D.config&&D.config.feeDiscount)||1), t=String(s.ticker).startsWith('00')?0.001:0.003; return Math.round(s.marketValue*(1-f-t)); }
+async function undo(){
+  if(!confirm('確定還原到上一次儲存之前的數字？')) return;
+  try{ const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','x-pass':tok()},body:JSON.stringify({action:'undo'})});
+    const j=await r.json(); if(j.status!=='success') throw new Error(j.message);
+    closeModal(); toast('已還原'); await load();
+  }catch(e){ toast('還原失敗：'+e.message); }
+}
 function payoff(hs,rem){
   const a=hs.filter(x=>x.debt!=null); if(rem<=0||a.length<2) return '';
   const f=a[0],l=a[a.length-1],mo=(new Date(l.t)-new Date(f.t))/2.63e9,pace=(f.debt-l.debt)/mo;
@@ -97,7 +132,7 @@ function simCalc(){
   document.querySelectorAll('.sim-s:checked').forEach(e=>sell+=+e.dataset.v);
   document.querySelectorAll('.sim-d').forEach(e=>pay+=Math.min(Number(e.value)||0,+e.dataset.max));
   const na=c.availableCash+sell-pay, dt=na-D.targetData.currentTarget;
-  $('simout').innerHTML=`可動用現金 ${fm(c.availableCash)} → <span class="text-milktea-800">${fm(na)}</span><br>與本月目標${dt>=0?'超前':'落後'} ${fm(Math.abs(dt))}　剩餘借款 ${fm(D.debtData.totalRemaining-pay)}`;
+  $('simout').innerHTML=`可動用現金 ${fm(c.availableCash)} → <span class="text-milktea-800">${fm(na)}</span><br>${D.targetData.currentTarget>0?'與月底目標'+(dt>=0?'超前':'落後')+' '+fm(Math.abs(dt))+'　':''}剩餘借款 ${fm(D.debtData.totalRemaining-pay)}`;
 }
 function spark(hs){
   const W=320,H=100,P=8,vs=hs.map(x=>x.net),lo=Math.min(...vs),hi=Math.max(...vs);
@@ -108,28 +143,32 @@ function spark(hs){
 }
 function render(){
   const c=D.cashData, st=D.stockData, db=D.debtData, tg=D.targetData;
-  const avail=c.availableCash, target=tg.currentTarget, delta=avail-target, ahead=delta>=0;
+  const avail=c.availableCash, target=tg.currentTarget, delta=avail-target, ahead=delta>=0, hasT=target>0;
   const pct=Math.max(0,Math.min(avail/target*100,100)).toFixed(1);
   const net=c.totalCash+(st?st.totalMarketValue:0)-c.totalCreditCardDebt-db.totalRemaining;
 
   let h=`<section class="glass rounded-3xl p-6 shadow-sm">
     <h2 class="text-sm font-semibold text-gray-500">實際可動用現金（已扣卡費${c.mortgagePending?'與預扣房貸 '+M(c.mortgage):'・本月房貸已扣款'}）</h2>
     <div class="text-4xl font-extrabold tracking-tight mt-1">${M(avail)}</div>
-    <div class="mt-2 inline-block text-sm font-bold px-3 py-1 rounded-full ${ahead?'bg-green-100 text-green-700':'bg-amber-100 text-amber-800'}">${ahead?'超前':'落後'}本月計畫 ${M(Math.abs(delta))}</div>
+    ${hasT?`<div class="mt-2 inline-block text-sm font-bold px-3 py-1 rounded-full ${ahead?'bg-green-100 text-green-700':'bg-amber-100 text-amber-800'}">${ahead?'已超過':'距離'}本月底目標 ${M(Math.abs(delta))}${ahead?'':'（尚差）'}</div>
     <div class="w-full bg-white/60 rounded-full h-2.5 mt-4 overflow-hidden"><div class="bar ${ahead?'bg-green-400':'bg-amber-400'} h-2.5 rounded-full" id="pb" style="width:0%"></div></div>
-    <div class="text-xs text-gray-400 mt-1">本月目標 ${M(target)}・達成 ${(avail/target*100).toFixed(0)}%</div>
+    <div class="text-xs text-gray-400 mt-1">本月底目標 ${M(target)}・達成 ${(avail/target*100).toFixed(0)}%</div>`:'<div class="text-xs text-gray-400 mt-2">本月尚無計畫目標（在計畫表往後續寫月份即可）</div>'}
     <div class="mt-4 pt-4 border-t border-white/60 grid grid-cols-3 gap-2 text-sm">
       <div><div class="text-gray-400 text-xs">銀行總額</div><b>${M(c.totalCash)}</b></div>
       <div><div class="text-gray-400 text-xs">未出帳卡費</div><b class="text-amber-700">${M(c.totalCreditCardDebt)}</b></div>
       <div><div class="text-gray-400 text-xs">淨資產</div><b>${M(net)}</b></div>
     </div></section>`;
 
+  h+=flowCard();
   const hist=D.history||[];
   if(hist.length){ const days=Math.floor((Date.now()-new Date(hist[hist.length-1].t))/864e5);
     if(days>((D.config&&D.config.staleDays)||35)) h=`<div class="rounded-2xl bg-amber-100 text-amber-800 text-sm font-bold px-4 py-3">⚠️ 已 ${days} 天沒有更新，數字可能已過期</div>`+h; }
   if(hist.length>1) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">淨資產走勢</h3><div class="glass rounded-3xl p-5 shadow-sm">${spark(hist)}</div></section>`;
-  if(tg.series&&tg.series.length>1) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">計畫 vs 實際</h3><div class="glass rounded-3xl p-5 shadow-sm">${chart(tg.series,avail)}</div></section>`;
+  if(tg.series&&tg.series.length>1) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">計畫 vs 實際</h3><div class="glass rounded-3xl p-5 shadow-sm"><div id="chartbar" class="flex gap-2 mb-3 flex-wrap"></div><div id="chartbox"></div></div></section>`;
 
+  if(D.goals&&D.goals.length) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">長期里程碑（以淨資產計）</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-4">`+D.goals.map(g=>{
+    const p=Math.max(0,Math.min(net/g.target*100,100)), left=g.date?Math.ceil((new Date(g.date)-Date.now())/864e5):null;
+    return `<div><div class="flex justify-between text-sm mb-1.5"><b>${g.name}</b><span class="text-xs text-gray-500">${p.toFixed(0)}%・尚缺 ${M(Math.max(g.target-net,0))}${left!=null?'・'+(left>0?left+' 天後':'已到期'):''}</span></div><div class="w-full bg-white/60 rounded-full h-2.5 overflow-hidden"><div class="bar bg-milktea-800 h-2.5 rounded-full" style="width:${p}%"></div></div></div>`;}).join('')+'</div></section>';
   h+=`<section><div class="flex justify-between items-end mb-3 pl-2"><h3 class="text-lg font-bold text-milktea-800">親友借款進度</h3><span class="text-sm font-bold text-amber-700">剩餘待還 ${M(db.totalRemaining)}</span></div>
     <div class="glass rounded-3xl p-6 shadow-sm space-y-5">`;
   h+= db.debts.length ? db.debts.map(d=>`<div><div class="flex justify-between items-end mb-1.5"><b class="text-gray-700">${d.name}</b><span class="text-xs text-gray-500">已還 ${d.progress}%・剩 ${M(d.remaining)}</span></div>
@@ -148,11 +187,11 @@ function render(){
     c.accounts.map(a=>`<div class="glass rounded-2xl p-4 shadow-sm"><div class="text-sm text-gray-500">${a.name}</div><div class="text-lg font-bold mt-1">${M(a.balance)}</div>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}${a.ccDay?'・'+a.ccDay+' 日自動扣':''}</div>`:''}</div>`).join('')+'</div></section>';
 
   h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">情境模擬</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-3" id="sim">
-    ${st?st.holdings.map(s=>`<label class="flex justify-between items-center text-sm"><span><input type="checkbox" class="sim-s mr-2" data-v="${s.marketValue}">賣出 ${s.name}</span><b>${M(s.marketValue)}</b></label>`).join(''):''}
+    ${st?st.holdings.map(s=>`<label class="flex justify-between items-center text-sm"><span><input type="checkbox" class="sim-s mr-2" data-v="${sellNet(s)}">賣出 ${s.name}</span><span class="text-right"><b>${M(sellNet(s))}</b><div class="text-xs text-gray-400">已扣手續費與證交稅</div></span></label>`).join(''):''}
     ${db.debts.map(d=>`<label class="flex justify-between items-center text-sm gap-3"><span class="shrink-0">提前還 ${d.name}</span><input inputmode="decimal" placeholder="0" class="inp sim-d" style="max-width:8rem" data-max="${d.remaining}"></label>`).join('')}
     <div id="simout" class="text-sm font-bold pt-3 border-t border-white/60"></div></div></section>`;
-  $('app').innerHTML=h; $('sim').oninput=simCalc; simCalc(); 
-  setTimeout(()=>{ $('pb').style.width=pct+'%'; document.querySelectorAll('.db').forEach(e=>e.style.width=e.dataset.w+'%'); },80);
+  $('app').innerHTML=h; drawChart(); $('sim').oninput=simCalc; simCalc(); 
+  setTimeout(()=>{ if($('pb'))$('pb').style.width=pct+'%'; document.querySelectorAll('.db').forEach(e=>e.style.width=e.dataset.w+'%'); },80);
 }
 
 // ===== 更新視窗 =====
@@ -164,7 +203,7 @@ function openModal(){
     <input inputmode="decimal" data-k="a" data-i="${i}" data-o="${a.balance}" value="${a.balance}" class="inp"><input inputmode="decimal" data-k="c" data-i="${i}" data-o="${a.ccBill}" value="${a.ccBill}" class="inp text-amber-700"></div>`).join('');
   if(D.debtData.debts.length) h+='<h3 class="font-bold text-milktea-800 pt-3">🤝 親友借款（累計已還，輸入正數）</h3>'+D.debtData.debts.map((d,i)=>row(d.name,'d',i,d.repaid)).join('');
   if(D.stockData&&D.stockData.holdings.length) h+='<h3 class="font-bold text-milktea-800 pt-3">📈 股票持股數</h3>'+D.stockData.holdings.map((s,i)=>row(s.name,'s',i,s.shares)).join('');
-  $('form').innerHTML=h; $('form').oninput=onEdit; onEdit();
+  $('form').innerHTML=(D.undoAt?`<button type="button" onclick="undo()" class="text-xs text-amber-700 underline">↩︎ 還原上一次儲存（${hhmm(D.undoAt)}）</button>`:'')+h; $('form').oninput=onEdit; onEdit();
   $('modal').classList.remove('hidden'); document.body.classList.add('mo');
 }
 function closeModal(){ $('modal').classList.add('hidden'); document.body.classList.remove('mo'); }
@@ -173,7 +212,7 @@ function onEdit(){
   document.querySelectorAll('#form input').forEach(el=>{
     const v=Number(el.value)||0; el.classList.toggle('chg',v!==Number(el.dataset.o));
     if(el.dataset.k==='a') a+=v; if(el.dataset.k==='c') c+=v; });
-  const mAfter=new Date().getDate()>=((D.config&&D.config.mortgageDay)||3)?0:D.cashData.mortgage, n=a-c-mAfter, d=n-D.cashData.availableCash;
+  const mAfter=new Date().getDate()>=Math.min(((D.config&&D.config.mortgageDay)||3),new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate())?0:D.cashData.mortgage, n=a-c-mAfter, d=n-D.cashData.availableCash;
   $('preview').innerHTML=`更新後可動用現金：${fm(n)}　<span class="${d>=0?'text-green-600':'text-amber-700'}">${d>=0?'+':'−'}${fm(Math.abs(d))}</span>`;
 }
 async function save(ev){
