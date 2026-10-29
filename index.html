@@ -27,7 +27,7 @@
   <div class="glass rounded-3xl p-6 h-40 animate-pulse"></div>
 </main>
 
-<button onclick="openModal()" class="fixed right-6 bg-milktea-800 hover:bg-milktea-900 text-white shadow-xl rounded-full py-4 px-6 font-bold z-40 active:scale-95 transition-transform" style="bottom:calc(1.5rem + env(safe-area-inset-bottom))">✏️ 全面更新</button>
+<button id="fab" onclick="fabGo()" class="fixed right-6 bg-milktea-800 hover:bg-milktea-900 text-white shadow-xl rounded-full py-4 px-6 font-bold z-40 active:scale-95 transition-transform" style="bottom:calc(5.5rem + env(safe-area-inset-bottom))">✏️ 全面更新</button>
 
 <div id="modal" class="hidden fixed inset-0 bg-milktea-900/40 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center items-center">
   <div class="bg-milktea-50 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 max-h-[92vh] flex flex-col shadow-2xl" style="padding-bottom:calc(1.5rem + env(safe-area-inset-bottom))">
@@ -40,6 +40,10 @@
     </div>
   </div>
 </div>
+<nav id="tabbar" class="glass fixed bottom-0 inset-x-0 z-40 flex justify-around" style="padding-bottom:env(safe-area-inset-bottom)"></nav>
+<div id="tmodal" class="hidden fixed inset-0 bg-milktea-900/40 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center items-center"><div class="bg-milktea-50 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 max-h-[92vh] flex flex-col shadow-2xl" style="padding-bottom:calc(1.5rem + env(safe-area-inset-bottom))">
+  <h2 class="text-xl font-bold">記一筆交易</h2><div id="tform" class="overflow-y-auto space-y-3 flex-1 mt-3 pb-3"></div><div id="tprev" class="text-sm font-bold text-center py-2 border-t border-gray-200 min-h-[2.5rem]"></div>
+  <div class="flex gap-3"><button type="button" onclick="$('tmodal').classList.add('hidden')" class="flex-1 py-3 rounded-xl bg-gray-200 font-bold">取消</button><button id="tbtn" onclick="saveTrade()" class="flex-1 py-3 rounded-xl bg-milktea-800 text-white font-bold">儲存</button></div></div></div>
 <div id="toast" class="fixed left-1/2 -translate-x-1/2 top-4 z-[60] hidden bg-milktea-900 text-white text-sm px-4 py-2 rounded-full shadow-lg"></div>
 
 <script>
@@ -112,7 +116,71 @@ function flowCard(){
   ev.sort((x,y)=>x.d-y.d);
   return `<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">本月即將發生</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-3">`+ev.map(e=>`<div class="flex justify-between items-center text-sm"><span><b class="mr-2">${n.getMonth()+1}/${e.d}</b>${e.t}${e.d<td?'（已到期，待更新餘額）':''}</span><span class="text-right"><b class="text-amber-700">${fm(e.a)}</b><div class="text-xs text-gray-400">${e.note}</div></span></div>`).join('')+'</div></section>';
 }
-function sellNet(s){ const f=0.001425*(s.feeDiscount||(D.config&&D.config.feeDiscount)||1), t=String(s.ticker).startsWith('00')?0.001:0.003; return Math.round(s.marketValue*(1-f-t)); }
+const TAB={'計畫 vs 實際':'plan','情境模擬':'plan','長期里程碑':'plan','淨資產走勢':'ov','本月即將發生':'ov','親友借款進度':'fund','各帳戶餘額明細':'fund','股票存摺':'stk'};
+const TABS=[['ov','總覽','<path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>'],['fund','資金','<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/><circle cx="16.5" cy="13.5" r="1.2"/>'],['stk','股票','<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'],['plan','規劃','<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>']];
+let TB=localStorage.getItem('tab')||'ov', SV='inv', SA=false, TR='buy';
+function route(){ [...$('app').children].forEach(el=>{ const t=(el.querySelector('h3')||{}).textContent||''; let k='ov'; for(const key in TAB) if(t.indexOf(key)===0) k=TAB[key]; el.dataset.tab=k; }); showTab(TB,1); }
+function showTab(t,keep){ TB=t; localStorage.setItem('tab',t); [...$('app').children].forEach(el=>{ if(el.dataset.tab) el.classList.toggle('hidden',el.dataset.tab!==t); }); renderBar(); if(!keep) window.scrollTo(0,0); }
+function renderBar(){
+  $('tabbar').innerHTML=TABS.map(t=>`<button onclick="showTab('${t[0]}')" class="flex-1 flex flex-col items-center py-2 text-xs font-bold ${TB===t[0]?'text-milktea-800':'text-gray-400'}"><svg class="w-6 h-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t[2]}</svg>${t[1]}</button>`).join('');
+  const f=$('fab'); if(f) f.textContent=TB==='stk'?'＋ 記一筆':'✏️ 全面更新';
+}
+function fabGo(){ if(!D) return; TB==='stk'?openTrade('buy'):openModal(); }
+function accHTML(c){
+  const all=c.accounts.slice().sort((a,b)=>b.balance-a.balance), vis=all.filter(a=>SA||a.balance>0||a.ccBill>0), hid=all.length-vis.length;
+  return vis.map(a=>`<div class="flex justify-between items-center py-2.5"><div><b class="text-sm">${a.name}</b>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}${a.ccDay?'・'+a.ccDay+' 日自動扣':''}</div>`:''}</div><b>${M(a.balance)}</b></div>`).join('<div class="border-t border-gray-200/60"></div>')
+   +(hid||SA?`<button onclick="SA=!SA;render()" class="w-full text-xs text-gray-500 pt-3">${SA?'收合 $0 帳戶':'顯示其他 '+hid+' 個 $0 帳戶'}</button>`:'');
+}
+const taxRate=tk=>{tk=String(tk); return /^00\d+B$/.test(tk)?0:tk.startsWith('00')?0.001:0.003;};   // 債券ETF證交稅目前免徵（請留意法規期限）
+function drawStock(){
+  const box=$('stkbox'); if(!box) return;
+  const st=D.stockData, tr=(D.trades||[]).slice().reverse(), lg=D.soldLegacy||[], sells=tr.filter(x=>x.act==='賣');
+  const real=sells.reduce((a,x)=>a+x.pl,0)+lg.reduce((a,x)=>a+x.pl,0), un=st.totalPL||0;
+  const pl=v=>`<span class="${v>=0?'text-red-500':'text-green-600'}">${v>=0?'+':'−'}${fm(Math.abs(v))}</span>`;
+  const pill=(k,t)=>`<button onclick="SV='${k}';drawStock()" class="px-3 py-1 rounded-full text-xs font-bold ${SV===k?'bg-milktea-800 text-white':'bg-white/60'}">${t}</button>`;
+  const row=(l,sub,r,r2,click='')=>`<div ${click} class="flex justify-between items-center p-3 rounded-xl ${click?'active:bg-white/40':''}"><div><b>${l}</b><div class="text-xs text-gray-500">${sub}</div></div><div class="text-right"><b>${r}</b><div class="text-sm">${r2}</div></div></div>`;
+  let h=`<div class="glass rounded-3xl p-5 shadow-sm mb-3"><div class="grid grid-cols-3 gap-2 text-sm"><div><div class="text-xs text-gray-400">現值</div><b>${M(st.totalMarketValue||0)}</b></div><div><div class="text-xs text-gray-400">未實現</div><b>${pl(un)}</b></div><div><div class="text-xs text-gray-400">已實現（累計）</div><b>${pl(real)}</b></div></div><div class="text-xs text-gray-500 mt-3">含已賣出的合計損益 ${pl(un+real)}</div></div>
+   <div class="flex gap-2 mb-3">${pill('inv','庫存')}${pill('sold','已賣出')}${pill('log','交易')}</div><div class="glass rounded-3xl p-2 shadow-sm">`;
+  if(SV==='inv') h+=st.holdings.slice().sort((a,b)=>b.marketValue-a.marketValue).map(s=>{const r=s.cost>0?(s.profitLoss/s.cost*100).toFixed(1):'0.0';
+    return row(s.name,`${s.ticker}・${s.shares} 股・均價 ${(s.cost/s.shares).toFixed(2)}${s.broker?'・'+s.broker:''}`,M(s.marketValue),`${pl(s.profitLoss)}（${s.profitLoss>=0?'+':''}${r}%）`,`onclick="openTrade('sell',${s.row})"`);}).join('')+'<div class="text-xs text-gray-400 text-center py-2">點一檔可記錄賣出</div>';
+  if(SV==='sold') h+=(sells.map(x=>row(x.name,`${x.d}・${x.shares} 股 @ ${x.price}`,M(Math.round(x.price*x.shares)),pl(x.pl))).join('')+lg.map(x=>row(x.name,`舊紀錄・${x.shares} 股`,M(Math.round(x.price*x.shares)),pl(x.pl))).join(''))||'<div class="text-sm text-gray-500 text-center py-6">還沒有賣出紀錄</div>';
+  if(SV==='log') h+=tr.slice(0,40).map(x=>row(`${x.act==='買'?'買進':'賣出'} ${x.name}`,`${x.d}・${x.shares} 股 @ ${x.price}${x.broker?'・'+x.broker:''}`,M(Math.round(x.price*x.shares)),`手續費 ${fm(x.fee)}${x.tax?'・稅 '+fm(x.tax):''}`)).join('')||'<div class="text-sm text-gray-500 text-center py-6">還沒有交易紀錄</div>';
+  box.innerHTML=h+'</div>';
+}
+function curHold(){ const hs=D.stockData.holdings, e=$('t_row'); if(TR==='sell'&&e) return hs.find(x=>x.row===+e.value); const n=$('t_nm'); return n?hs.find(x=>x.name===n.value):null; }
+function openTrade(act,row){
+  TR=act; const hs=D.stockData.holdings, sel=row||(hs[0]&&hs[0].row), today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+  const f=(id,l,x='',ty='text')=>`<label class="block text-sm font-bold">${l}<input id="${id}" type="${ty}" ${x} oninput="tcalc(this)" class="inp !text-left mt-1"></label>`;
+  const tg=`<div class="flex gap-2">${['buy','sell'].map(k=>`<button type="button" onclick="openTrade('${k}'${k==='sell'&&sel?','+sel:''})" class="flex-1 py-2 rounded-xl font-bold ${TR===k?'bg-milktea-800 text-white':'bg-white/60'}">${k==='buy'?'買進':'賣出'}</button>`).join('')}</div>`;
+  const pick=act==='sell'?`<select id="t_row" onchange="tcalc(this)" class="inp !text-left">${hs.map(x=>`<option value="${x.row}" ${x.row===sel?'selected':''}>${x.name}（${x.shares} 股${x.broker?'・'+x.broker:''}）</option>`).join('')}</select>`
+    :f('t_nm','股票名稱','list="tl"')+`<datalist id="tl">${hs.map(x=>`<option value="${x.name}">`).join('')}</datalist>`+f('t_tk','股票代號');
+  $('tform').innerHTML=tg+pick+f('t_sh','股數','inputmode="numeric"')+f('t_px','成交價','inputmode="decimal"')+f('t_dt','日期',`value="${today}"`,'date')+f('t_br','券商')+f('t_fee','手續費（自動，可改）','inputmode="numeric"')+f('t_tax','證交稅（自動，可改）','inputmode="numeric"')+f('t_nt','備註');
+  $('tprev').innerHTML=''; $('tmodal').classList.remove('hidden'); if(act==='sell') tcalc($('t_row'));
+}
+function tcalc(el){
+  if(el&&(el.id==='t_fee'||el.id==='t_tax')) el.dataset.man='1';
+  const h=curHold();
+  if(el&&(el.id==='t_row'||el.id==='t_nm')&&h){ $('t_br').value=h.broker||''; if($('t_tk')) $('t_tk').value=h.ticker; }
+  const n=+$('t_sh').value||0, amt=n*(+$('t_px').value||0), tk=String(h?h.ticker:($('t_tk')?$('t_tk').value:'')), disc=(h&&h.feeDiscount)||(D.config&&D.config.feeDiscount)||1;
+  if(!$('t_fee').dataset.man) $('t_fee').value=amt?Math.max(20,Math.floor(amt*0.001425*disc)):'';
+  if(!$('t_tax').dataset.man) $('t_tax').value=TR==='sell'&&amt?Math.floor(amt*taxRate(tk)):0;
+  const fee=+$('t_fee').value||0, tax=+$('t_tax').value||0;
+  if(TR==='sell'&&h&&n&&amt){ const p=Math.round(amt)-fee-tax-Math.round(h.cost*n/h.shares); $('tprev').innerHTML=`預估入帳 ${fm(Math.round(amt)-fee-tax)}　已實現 <span class="${p>=0?'text-red-500':'text-green-600'}">${p>=0?'+':'−'}${fm(Math.abs(p))}</span>`; }
+  else $('tprev').innerHTML=TR==='buy'&&amt?`含手續費總成本 ${fm(Math.round(amt)+fee)}`:'';
+}
+async function saveTrade(){
+  const h=curHold(), n=+$('t_sh').value, p=+$('t_px').value;
+  const d={type:TR,date:$('t_dt').value,broker:$('t_br').value,shares:n,price:p,fee:+$('t_fee').value||0,tax:+$('t_tax').value||0,note:$('t_nt').value};
+  if(!(n>0)||!(p>0)) return toast('請填股數與成交價');
+  if(TR==='sell'){ if(!h) return toast('請選擇股票'); if(n>h.shares) return toast('超過持有股數'); Object.assign(d,{row:h.row,ticker:h.ticker,name:h.name}); }
+  else { d.name=$('t_nm').value.trim(); d.ticker=$('t_tk').value.trim(); if(!d.name||!d.ticker) return toast('請填股票名稱與代號'); }
+  const b=$('tbtn'); b.disabled=true;
+  try{ const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','x-pass':tok()},body:JSON.stringify({action:'trade',data:d})});
+    const j=await r.json(); if(j.status!=='success') throw new Error(j.message);
+    $('tmodal').classList.add('hidden'); toast('✅ 已記錄'); await load();
+  }catch(e){ toast('失敗：'+e.message); } finally{ b.disabled=false; }
+}
+function sellNet(s){ const f=0.001425*(s.feeDiscount||(D.config&&D.config.feeDiscount)||1), t=taxRate(s.ticker); return Math.round(s.marketValue*(1-f-t)); }
 async function undo(){
   if(!confirm('確定還原到上一次儲存之前的數字？')) return;
   try{ const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','x-pass':tok()},body:JSON.stringify({action:'undo'})});
@@ -175,22 +243,15 @@ function render(){
     <div class="w-full bg-white/60 rounded-full h-2.5 overflow-hidden"><div class="bar db bg-milktea-800 h-2.5 rounded-full" data-w="${d.progress}" style="width:0%"></div></div></div>`).join('') : '<div class="text-center text-gray-500">🎉 借款已全數還清</div>';
   h+=payoff(D.history||[],db.totalRemaining)+'</div></section>';
 
-  if(st){ h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">股票資產部位</h3><div class="glass rounded-3xl p-6 shadow-sm">
-    <div class="flex justify-between items-end mb-4 pb-4 border-b border-gray-200/50"><div><div class="text-sm text-gray-500">總現值</div><div class="text-3xl font-extrabold">${M(st.totalMarketValue)}</div></div>
-    <div class="text-right"><div class="text-sm text-gray-500">未實現損益</div><div class="text-xl font-bold ${st.totalPL>=0?'text-red-500':'text-green-600'}">${st.totalPL>=0?'+':''}${M(st.totalPL)}</div></div></div>`;
-    h+=st.holdings.map(s=>{ const up=s.profitLoss>=0, r=s.cost>0?(s.profitLoss/s.cost*100).toFixed(1):'0.0';
-      return `<div class="flex justify-between items-center p-3 rounded-xl hover:bg-white/40"><div><b>${s.name}</b><div class="text-xs text-gray-500">${s.shares} 股</div></div>
-      <div class="text-right"><b>${M(s.marketValue)}</b><div class="text-sm ${up?'text-red-500':'text-green-600'}">${up?'+':''}${M(s.profitLoss)}（${up?'+':''}${r}%）</div></div></div>`;}).join('');
-    h+='</div></section>'; }
+  if(st) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">股票存摺</h3><div id="stkbox"></div></section>`;
 
-  h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">各帳戶餘額明細</h3><div class="grid grid-cols-2 gap-4">`+
-    c.accounts.map(a=>`<div class="glass rounded-2xl p-4 shadow-sm"><div class="text-sm text-gray-500">${a.name}</div><div class="text-lg font-bold mt-1">${M(a.balance)}</div>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}${a.ccDay?'・'+a.ccDay+' 日自動扣':''}</div>`:''}</div>`).join('')+'</div></section>';
+  h+=`<section><div class="flex justify-between items-end mb-3 pl-2"><h3 class="text-lg font-bold text-milktea-800">各帳戶餘額明細</h3><span class="text-sm text-gray-500">合計 ${M(c.totalCash)}</span></div><div class="glass rounded-3xl p-4 shadow-sm">${accHTML(c)}</div></section>`;
 
   h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">情境模擬</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-3" id="sim">
     ${st?st.holdings.map(s=>`<label class="flex justify-between items-center text-sm"><span><input type="checkbox" class="sim-s mr-2" data-v="${sellNet(s)}">賣出 ${s.name}${s.broker?'<span class="text-xs text-gray-400">（'+s.broker+'）</span>':''}</span><span class="text-right"><b>${M(sellNet(s))}</b><div class="text-xs text-gray-400">已扣手續費與證交稅</div></span></label>`).join(''):''}
     ${db.debts.map(d=>`<label class="flex justify-between items-center text-sm gap-3"><span class="shrink-0">提前還 ${d.name}</span><input inputmode="decimal" placeholder="0" class="inp sim-d" style="max-width:8rem" data-max="${d.remaining}"></label>`).join('')}
     <div id="simout" class="text-sm font-bold pt-3 border-t border-white/60"></div></div></section>`;
-  $('app').innerHTML=h; drawChart(); $('sim').oninput=simCalc; simCalc(); 
+  $('app').innerHTML=h; drawChart(); drawStock(); route(); $('sim').oninput=simCalc; simCalc(); 
   setTimeout(()=>{ if($('pb'))$('pb').style.width=pct+'%'; document.querySelectorAll('.db').forEach(e=>e.style.width=e.dataset.w+'%'); },80);
 }
 
@@ -234,7 +295,7 @@ async function save(ev){
   finally{ btn.disabled=false; btn.textContent='儲存同步'; }
 }
 if('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
-window.onload=()=>load();
+window.onload=()=>{renderBar();load();};
 </script>
 </body>
 </html>
