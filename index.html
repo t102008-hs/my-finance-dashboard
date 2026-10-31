@@ -49,6 +49,7 @@
 <script>
 // 資料由 /api/data（Vercel）代理讀寫，網頁內不含 Apps Script 網址與密鑰
 const API_URL = '/api/data';
+const VER = '2026.11.2';
 
 const $ = id => document.getElementById(id);
 const fm = n => new Intl.NumberFormat('zh-TW',{style:'currency',currency:'TWD',maximumFractionDigits:0}).format(n);
@@ -136,32 +137,49 @@ const taxRate=tk=>{tk=String(tk); return /^00\d+B$/.test(tk)?0:tk.startsWith('00
 function drawStock(){
   const box=$('stkbox'); if(!box) return;
   const st=D.stockData, tr=(D.trades||[]).slice().reverse(), lg=D.soldLegacy||[], sells=tr.filter(x=>x.act==='賣');
-  const real=sells.reduce((a,x)=>a+x.pl,0)+lg.reduce((a,x)=>a+x.pl,0), un=st.totalPL||0;
+  const real=sells.reduce((a,x)=>a+x.pl,0)+lg.reduce((a,x)=>a+x.pl,0), un=st.totalPL||0, dv=tr.filter(x=>x.act==='息').reduce((a,x)=>a+x.pl,0);
   const pl=v=>`<span class="${v>=0?'text-red-500':'text-green-600'}">${v>=0?'+':'−'}${fm(Math.abs(v))}</span>`;
   const pill=(k,t)=>`<button onclick="SV='${k}';drawStock()" class="px-3 py-1 rounded-full text-xs font-bold ${SV===k?'bg-milktea-800 text-white':'bg-white/60'}">${t}</button>`;
   const row=(l,sub,r,r2,click='')=>`<div ${click} class="flex justify-between items-center p-3 rounded-xl ${click?'active:bg-white/40':''}"><div><b>${l}</b><div class="text-xs text-gray-500">${sub}</div></div><div class="text-right"><b>${r}</b><div class="text-sm">${r2}</div></div></div>`;
-  let h=`<div class="glass rounded-3xl p-5 shadow-sm mb-3"><div class="grid grid-cols-3 gap-2 text-sm"><div><div class="text-xs text-gray-400">現值</div><b>${M(st.totalMarketValue||0)}</b></div><div><div class="text-xs text-gray-400">未實現</div><b>${pl(un)}</b></div><div><div class="text-xs text-gray-400">已實現（累計）</div><b>${pl(real)}</b></div></div><div class="text-xs text-gray-500 mt-3">含已賣出的合計損益 ${pl(un+real)}</div></div>
+  let h=`<div class="glass rounded-3xl p-5 shadow-sm mb-3"><div class="grid grid-cols-3 gap-2 text-sm"><div><div class="text-xs text-gray-400">現值</div><b>${M(st.totalMarketValue||0)}</b></div><div><div class="text-xs text-gray-400">未實現</div><b>${pl(un)}</b></div><div><div class="text-xs text-gray-400">已實現（累計）</div><b>${pl(real)}</b></div></div><div class="text-xs text-gray-500 mt-3">股利收入 ${pl(dv)}・含已賣出與股利的合計損益 ${pl(un+real+dv)}</div></div>
    <div class="flex gap-2 mb-3">${pill('inv','庫存')}${pill('sold','已賣出')}${pill('log','交易')}</div><div class="glass rounded-3xl p-2 shadow-sm">`;
   if(SV==='inv') h+=st.holdings.slice().sort((a,b)=>b.marketValue-a.marketValue).map(s=>{const r=s.cost>0?(s.profitLoss/s.cost*100).toFixed(1):'0.0';
     return row(s.name,`${s.ticker}・${s.shares} 股・均價 ${(s.cost/s.shares).toFixed(2)}${s.broker?'・'+s.broker:''}`,M(s.marketValue),`${pl(s.profitLoss)}（${s.profitLoss>=0?'+':''}${r}%）`,`onclick="openTrade('sell',${s.row})"`);}).join('')+'<div class="text-xs text-gray-400 text-center py-2">點一檔可記錄賣出</div>';
   if(SV==='sold') h+=(sells.map(x=>row(x.name,`${x.d}・${x.shares} 股 @ ${x.price}`,M(Math.round(x.price*x.shares)),pl(x.pl))).join('')+lg.map(x=>row(x.name,`舊紀錄・${x.shares} 股`,M(Math.round(x.price*x.shares)),pl(x.pl))).join(''))||'<div class="text-sm text-gray-500 text-center py-6">還沒有賣出紀錄</div>';
-  if(SV==='log') h+=tr.slice(0,40).map(x=>row(`${x.act==='買'?'買進':'賣出'} ${x.name}`,`${x.d}・${x.shares} 股 @ ${x.price}${x.broker?'・'+x.broker:''}`,M(Math.round(x.price*x.shares)),`手續費 ${fm(x.fee)}${x.tax?'・稅 '+fm(x.tax):''}`)).join('')||'<div class="text-sm text-gray-500 text-center py-6">還沒有交易紀錄</div>';
+  if(SV==='log') h+=(tr.length?`<button onclick="undoTrade()" class="w-full text-xs text-amber-700 py-2">↩︎ 撤銷最新一筆（${tr[0].name}）</button>`:'')+(tr.slice(0,40).map(x=>x.act==='息'?row('股利 '+x.name,`${x.d}${x.shares>0?'・配股 '+x.shares+' 股':''}`,M(x.pl),'現金股利'):row(`${x.act==='買'?'買進':'賣出'} ${x.name}`,`${x.d}・${x.shares} 股 @ ${x.price}${x.broker?'・'+x.broker:''}`,M(Math.round(x.price*x.shares)),`手續費 ${fm(x.fee)}${x.tax?'・稅 '+fm(x.tax):''}`)).join('')||'<div class="text-sm text-gray-500 text-center py-6">還沒有交易紀錄</div>');
   box.innerHTML=h+'</div>';
 }
-function curHold(){ const hs=D.stockData.holdings, e=$('t_row'); if(TR==='sell'&&e) return hs.find(x=>x.row===+e.value); const n=$('t_nm'); return n?hs.find(x=>x.name===n.value):null; }
+function allocCard(){
+  const c=D.cashData, st=D.stockData, hs=st?st.holdings:[];
+  const bond=hs.filter(x=>/^00\d+B$/.test(x.ticker)).reduce((a,x)=>a+x.marketValue,0), stock=(st?st.totalMarketValue:0)-bond, cash=c.totalCash, tot=cash+stock+bond;
+  if(!(tot>0)) return '';
+  const it=[['現金',cash,'#b9805e'],['股票／ETF',stock,'#8b5a42'],['債券ETF',bond,'#dcb8a3']].filter(x=>x[1]>0);
+  return `<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">資產配置</h3><div class="glass rounded-3xl p-5 shadow-sm"><div class="flex h-3 rounded-full overflow-hidden mb-3">${it.map(x=>`<div style="width:${x[1]/tot*100}%;background:${x[2]}"></div>`).join('')}</div>${it.map(x=>`<div class="flex justify-between text-sm py-0.5"><span><i class="inline-block w-2.5 h-2.5 rounded-full mr-2" style="background:${x[2]}"></i>${x[0]}</span><span><b>${M(x[1])}</b> <span class="text-xs text-gray-400">${(x[1]/tot*100).toFixed(0)}%</span></span></div>`).join('')}</div></section>`;
+}
+function healthCard(){
+  const cf=D.config||{}, c=D.cashData, st=D.stockData, assets=c.totalCash+(st?st.totalMarketValue:0), debt=c.totalCreditCardDebt+D.debtData.totalRemaining, rows=[];
+  if(cf.expense>0) rows.push(['緊急預備金可支撐',(c.availableCash/cf.expense).toFixed(1)+' 個月']);
+  if(assets>0) rows.push(['負債占總資產',(debt/assets*100).toFixed(0)+'%']);
+  if(!rows.length) return '';
+  return `<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">財務健康</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-2">${rows.map(r=>`<div class="flex justify-between text-sm"><span class="text-gray-500">${r[0]}</span><b>${r[1]}</b></div>`).join('')}</div></section>`;
+}
+function curHold(){ const hs=D.stockData.holdings, e=$('t_row'); if(TR!=='buy'&&e) return hs.find(x=>x.row===+e.value); const n=$('t_nm'); return n?hs.find(x=>x.name===n.value):null; }
 function openTrade(act,row){
   TR=act; const hs=D.stockData.holdings, sel=row||(hs[0]&&hs[0].row), today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
   const f=(id,l,x='',ty='text')=>`<label class="block text-sm font-bold">${l}<input id="${id}" type="${ty}" ${x} oninput="tcalc(this)" class="inp !text-left mt-1"></label>`;
-  const tg=`<div class="flex gap-2">${['buy','sell'].map(k=>`<button type="button" onclick="openTrade('${k}'${k==='sell'&&sel?','+sel:''})" class="flex-1 py-2 rounded-xl font-bold ${TR===k?'bg-milktea-800 text-white':'bg-white/60'}">${k==='buy'?'買進':'賣出'}</button>`).join('')}</div>`;
-  const pick=act==='sell'?`<select id="t_row" onchange="tcalc(this)" class="inp !text-left">${hs.map(x=>`<option value="${x.row}" ${x.row===sel?'selected':''}>${x.name}（${x.shares} 股${x.broker?'・'+x.broker:''}）</option>`).join('')}</select>`
+  const tg=`<div class="flex gap-2">${[['buy','買進'],['sell','賣出'],['div','股利']].map(([k,t])=>`<button type="button" onclick="openTrade('${k}'${k!=='buy'&&sel?','+sel:''})" class="flex-1 py-2 rounded-xl font-bold ${TR===k?'bg-milktea-800 text-white':'bg-white/60'}">${t}</button>`).join('')}</div>`;
+  const pick=act!=='buy'?`<select id="t_row" onchange="tcalc(this)" class="inp !text-left">${hs.map(x=>`<option value="${x.row}" ${x.row===sel?'selected':''}>${x.name}（${x.shares} 股${x.broker?'・'+x.broker:''}）</option>`).join('')}</select>`
     :f('t_nm','股票名稱','list="tl"')+`<datalist id="tl">${hs.map(x=>`<option value="${x.name}">`).join('')}</datalist>`+f('t_tk','股票代號');
-  $('tform').innerHTML=tg+pick+f('t_sh','股數','inputmode="numeric"')+f('t_px','成交價','inputmode="decimal"')+f('t_dt','日期',`value="${today}"`,'date')+f('t_br','券商')+f('t_fee','手續費（自動，可改）','inputmode="numeric"')+f('t_tax','證交稅（自動，可改）','inputmode="numeric"')+f('t_nt','備註');
-  $('tprev').innerHTML=''; $('tmodal').classList.remove('hidden'); document.body.classList.add('mo'); if(act==='sell') tcalc($('t_row'));
+  const dt=f('t_dt','日期',`value="${today}"`,'date'), nt=f('t_nt','備註');
+  const body=act==='div'?f('t_cash','現金股利總額（實收）','inputmode="decimal"')+f('t_sh','配股股數（沒有就留空）','inputmode="numeric"')+dt+nt
+    :f('t_sh','股數','inputmode="numeric"')+f('t_px','成交價','inputmode="decimal"')+dt+f('t_br','券商')+f('t_fee','手續費（自動，可改）','inputmode="numeric"')+f('t_tax','證交稅（自動，可改）','inputmode="numeric"')+nt;
+  $('tform').innerHTML=tg+pick+body; $('tprev').innerHTML=''; $('tmodal').classList.remove('hidden'); document.body.classList.add('mo'); if(act!=='buy') tcalc($('t_row'));
 }
 function tcalc(el){
   if(el&&(el.id==='t_fee'||el.id==='t_tax')) el.dataset.man='1';
   const h=curHold();
-  if(el&&(el.id==='t_row'||el.id==='t_nm')&&h){ $('t_br').value=h.broker||''; if($('t_tk')) $('t_tk').value=h.ticker; }
+  if(el&&(el.id==='t_row'||el.id==='t_nm')&&h){ if($('t_br')) $('t_br').value=h.broker||''; if($('t_tk')) $('t_tk').value=h.ticker; }
+  if(TR==='div'){ $('tprev').innerHTML=''; return; }
   const n=+$('t_sh').value||0, amt=n*(+$('t_px').value||0), tk=String(h?h.ticker:($('t_tk')?$('t_tk').value:'')), disc=(h&&h.feeDiscount)||(D.config&&D.config.feeDiscount)||1;
   if(!$('t_fee').dataset.man) $('t_fee').value=amt?Math.max(20,Math.floor(amt*0.001425*disc)):'';
   if(!$('t_tax').dataset.man) $('t_tax').value=TR==='sell'&&amt?Math.floor(amt*taxRate(tk)):0;
@@ -169,17 +187,24 @@ function tcalc(el){
   if(TR==='sell'&&h&&n&&amt){ const p=Math.round(amt)-fee-tax-Math.round(h.cost*n/h.shares); $('tprev').innerHTML=`預估入帳 ${fm(Math.round(amt)-fee-tax)}　已實現 <span class="${p>=0?'text-red-500':'text-green-600'}">${p>=0?'+':'−'}${fm(Math.abs(p))}</span>`; }
   else $('tprev').innerHTML=TR==='buy'&&amt?`含手續費總成本 ${fm(Math.round(amt)+fee)}`:'';
 }
-async function saveTrade(){
-  const h=curHold(), n=+$('t_sh').value, p=+$('t_px').value;
-  const d={type:TR,date:$('t_dt').value,broker:$('t_br').value,shares:n,price:p,fee:+$('t_fee').value||0,tax:+$('t_tax').value||0,note:$('t_nt').value};
-  if(!(n>0)||!(p>0)) return toast('請填股數與成交價');
-  if(TR==='sell'){ if(!h) return toast('請選擇股票'); if(n>h.shares) return toast('超過持有股數'); Object.assign(d,{row:h.row,ticker:h.ticker,name:h.name}); }
-  else { d.name=$('t_nm').value.trim(); d.ticker=$('t_tk').value.trim(); if(!d.name||!d.ticker) return toast('請填股票名稱與代號'); }
-  const b=$('tbtn'); b.disabled=true;
-  try{ const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','x-pass':tok()},body:JSON.stringify({action:'trade',data:d})});
+async function post(body,okMsg,failMsg){
+  try{ const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','x-pass':tok()},body:JSON.stringify(body)});
     const j=await r.json(); if(j.status!=='success') throw new Error(j.message);
-    closeTrade(); toast('✅ 已記錄'); await load();
-  }catch(e){ toast('失敗：'+e.message); } finally{ b.disabled=false; }
+    toast(okMsg); await load(); return true;
+  }catch(e){ toast(failMsg+e.message); return false; }
+}
+async function undoTrade(){ if(confirm('撤銷最新一筆交易，庫存會一併還原。確定嗎？')) await post({action:'undo_trade'},'已撤銷','撤銷失敗：'); }
+async function saveTrade(){
+  const h=curHold(), v=id=>$(id)?$(id).value:'', n=+v('t_sh')||0, p=+v('t_px')||0;
+  const d={type:TR,date:v('t_dt'),broker:v('t_br'),shares:n,price:p,fee:+v('t_fee')||0,tax:+v('t_tax')||0,note:v('t_nt'),cash:+v('t_cash')||0};
+  if(TR!=='buy'){ if(!h) return toast('請選擇股票'); Object.assign(d,{row:h.row,ticker:h.ticker,name:h.name,broker:h.broker||d.broker}); }
+  else { d.name=v('t_nm').trim(); d.ticker=v('t_tk').trim(); if(!d.name||!d.ticker) return toast('請填股票名稱與代號'); }
+  if(TR==='sell'&&n>h.shares) return toast('超過持有股數');
+  if(TR!=='div'&&(!(n>0)||!(p>0))) return toast('請填股數與成交價');
+  if(TR==='div'&&!(d.cash>0)&&!(n>0)) return toast('請填現金股利或配股股數');
+  const b=$('tbtn'); b.disabled=true;
+  if(await post({action:'trade',data:d},'✅ 已記錄','失敗：')) closeTrade();
+  b.disabled=false;
 }
 function sellNet(s){ const f=0.001425*(s.feeDiscount||(D.config&&D.config.feeDiscount)||1), t=taxRate(s.ticker); return Math.round(s.marketValue*(1-f-t)); }
 async function undo(){
@@ -229,6 +254,7 @@ function render(){
     </div></section>`;
 
   h+=flowCard();
+  h+=allocCard()+healthCard();
   const hist=D.history||[];
   if(hist.length){ const days=Math.floor((Date.now()-new Date(hist[hist.length-1].t))/864e5);
     if(days>((D.config&&D.config.staleDays)||35)) h=`<div class="rounded-2xl bg-amber-100 text-amber-800 text-sm font-bold px-4 py-3">⚠️ 已 ${days} 天沒有更新，數字可能已過期</div>`+h; }
@@ -252,6 +278,7 @@ function render(){
     ${st?st.holdings.map(s=>`<label class="flex justify-between items-center text-sm"><span><input type="checkbox" class="sim-s mr-2" data-v="${sellNet(s)}">賣出 ${s.name}${s.broker?'<span class="text-xs text-gray-400">（'+s.broker+'）</span>':''}</span><span class="text-right"><b>${M(sellNet(s))}</b><div class="text-xs text-gray-400">已扣手續費與證交稅</div></span></label>`).join(''):''}
     ${db.debts.map(d=>`<label class="flex justify-between items-center text-sm gap-3"><span class="shrink-0">提前還 ${d.name}</span><input inputmode="decimal" placeholder="0" class="inp sim-d" style="max-width:8rem" data-max="${d.remaining}"></label>`).join('')}
     <div id="simout" class="text-sm font-bold pt-3 border-t border-white/60"></div></div></section>`;
+  h+=`<div class="text-center text-xs text-gray-400 pt-4">網頁 ${VER}・${D.version||'後端舊版'}</div>`;
   $('app').innerHTML=h; drawChart(); drawStock(); route(); $('sim').oninput=simCalc; simCalc(); 
   setTimeout(()=>{ if($('pb'))$('pb').style.width=pct+'%'; document.querySelectorAll('.db').forEach(e=>e.style.width=e.dataset.w+'%'); },80);
 }
