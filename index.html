@@ -44,12 +44,15 @@
 <div id="tmodal" class="hidden fixed inset-0 bg-milktea-900/40 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center items-center"><div class="bg-milktea-50 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 max-h-[92vh] flex flex-col shadow-2xl" style="padding-bottom:calc(1.5rem + env(safe-area-inset-bottom))">
   <h2 class="text-xl font-bold">記一筆交易</h2><div id="tform" class="overflow-y-auto space-y-3 flex-1 mt-3 pb-3"></div><div id="tprev" class="text-sm font-bold text-center py-2 border-t border-gray-200 min-h-[2.5rem]"></div>
   <div class="flex gap-3"><button type="button" onclick="closeTrade()" class="flex-1 py-3 rounded-xl bg-gray-200 font-bold">取消</button><button id="tbtn" onclick="saveTrade()" class="flex-1 py-3 rounded-xl bg-milktea-800 text-white font-bold">儲存</button></div></div></div>
+<div id="sheet" class="hidden fixed inset-0 bg-milktea-900/40 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center items-center" onclick="if(event.target===this)closeSheet()"><div class="bg-milktea-50 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[88vh] flex flex-col shadow-2xl" style="padding-bottom:calc(1.25rem + env(safe-area-inset-bottom))">
+  <div class="flex justify-between items-center mb-3"><h2 id="sheetTitle" class="text-lg font-bold"></h2><button onclick="closeSheet()" class="w-9 h-9 rounded-full bg-white/60 text-lg" aria-label="關閉">✕</button></div>
+  <div id="sheetBody" class="flex-1" style="overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain"></div></div></div>
 <div id="toast" class="fixed left-1/2 -translate-x-1/2 top-4 z-[60] hidden bg-milktea-900 text-white text-sm px-4 py-2 rounded-full shadow-lg"></div>
 
 <script>
 // 資料由 /api/data（Vercel）代理讀寫，網頁內不含 Apps Script 網址與密鑰
 const API_URL = '/api/data';
-const VER = '2026.11.6';
+const VER = '2026.11.7';
 
 const $ = id => document.getElementById(id);
 const fm = n => new Intl.NumberFormat('zh-TW',{style:'currency',currency:'TWD',maximumFractionDigits:0}).format(n);
@@ -179,16 +182,26 @@ async function saveExpense(){
   if(await post({action:'expense',data:{amount:amt,cat:v('e_cat'),merchant:v('e_mer'),account:v('e_acc'),pay:v('e_pay'),date:v('e_dt')}},'✅ 已記帳','失敗：')) closeTrade();
   b.disabled=false;
 }
+let LF='next';
+function closeSheet(){ $('sheet').classList.add('hidden'); document.body.classList.remove('mo'); }
+function openLoan(i,f){
+  if(f) LF=f; const l=D.loans[i], rows=LF==='all'?l.sched:LF==='paid'?l.sched.slice(0,l.paid):l.sched.slice(l.paid);
+  const chip=(k,t)=>`<button onclick="openLoan(${i},'${k}')" class="px-3 py-1 rounded-full text-xs font-bold ${LF===k?'bg-milktea-800 text-white':'bg-white/60'}">${t}</button>`;
+  const g='grid grid-cols-[3.2rem_1fr_1fr_1fr] gap-x-2';
+  $('sheetTitle').textContent=l.name+'・攤還表';
+  $('sheetBody').innerHTML=`<div class="flex gap-2 mb-3">${chip('next','未繳')}${chip('paid','已繳')}${chip('all','全部')}</div><div class="${g} text-[11px] text-gray-400 pb-1 border-b border-white/40"><span>期</span><span class="text-right">本金</span><span class="text-right">利息</span><span class="text-right">剩餘本金</span></div>`
+   +rows.map(x=>`<div class="${g} py-2 text-xs border-b border-white/20 ${x[0]<=l.paid?'text-gray-400':''}"><span><b>${x[0]}</b><div class="text-[10px]">${x[1].slice(2,7).replace('-','/')}</div></span><span class="text-right">${fm(x[3])}</span><span class="text-right">${fm(x[4])}</span><span class="text-right">${fm(x[5])}</span></div>`).join('');
+  $('sheet').classList.remove('hidden'); document.body.classList.add('mo');
+}
 function loanCard(){
   const ls=D.loans||[]; if(!ls.length) return '';
-  return `<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">房貸／貸款</h3>`+ls.map(l=>{
-    const pct=(1-l.balance/l.amount)*100, rows=LOANV?l.sched:l.sched.slice(l.paid,l.paid+12), g=(t,v)=>`<div><div class="text-xs text-gray-400">${t}</div><b>${v}</b></div>`;
+  return `<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">房貸／貸款</h3>`+ls.map((l,idx)=>{
+    const pct=(1-l.balance/l.amount)*100, g=(t,v)=>`<div><div class="text-xs text-gray-400">${t}</div><b>${v}</b></div>`;
     return `<div class="glass rounded-3xl p-5 shadow-sm mb-3"><div class="flex justify-between items-end"><b>${l.name}</b><span class="text-xs text-gray-500">年利率 ${l.rate}%・${l.n} 期</span></div>
     <div class="text-3xl font-extrabold mt-1">${M(l.balance)}</div><div class="text-xs text-gray-400">剩餘本金（已還 ${pct.toFixed(1)}%）</div>
     <div class="w-full bg-white/60 rounded-full h-2.5 mt-3 overflow-hidden"><div class="bar bg-milktea-800 h-2.5 rounded-full" style="width:${pct}%"></div></div>
     <div class="grid grid-cols-2 gap-y-3 text-sm mt-4">${g('已繳／剩餘',l.paid+'／'+l.remain+' 期')}${g('月付金',M(l.monthly))}${g('下次繳款',l.next?l.next[1].slice(5).replace('-','/')+'・'+M(l.next[2]):'已還清')}${g('預計還清',l.endDate.slice(0,7).replace('-','/'))}${g('剩餘利息總額','<span class="text-amber-700">'+M(l.interestLeft)+'</span>')}</div>
-    <button onclick="LOANV=LOANV?0:1;render()" class="w-full text-xs text-gray-500 pt-3">${LOANV?'只看未來 12 期':'查看完整攤還表'}</button>
-    <div class="mt-2 divide-y divide-white/40">${rows.map(x=>`<div class="flex justify-between py-2 text-sm ${x[0]<=l.paid?'text-gray-400':''}"><span>${x[0]<=l.paid?'✓ ':''}第 ${x[0]} 期 <span class="text-xs">${x[1].slice(2).replace(/-/g,'/')}</span></span><span class="text-right"><b>${M(x[2])}</b><div class="text-xs text-gray-400">本金 ${fm(x[3])}・利息 ${fm(x[4])}・餘 ${fm(x[5])}</div></span></div>`).join('')}</div></div>`;
+    <button onclick="openLoan(${idx})" class="w-full mt-4 py-2.5 rounded-xl bg-white/60 text-sm font-bold text-milktea-800">查看攤還表 ›</button></div>`;
   }).join('')+'</section>';
 }
 function allocCard(){
