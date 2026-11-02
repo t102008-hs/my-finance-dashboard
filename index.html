@@ -49,7 +49,7 @@
 <script>
 // 資料由 /api/data（Vercel）代理讀寫，網頁內不含 Apps Script 網址與密鑰
 const API_URL = '/api/data';
-const VER = '2026.11.5';
+const VER = '2026.11.6';
 
 const $ = id => document.getElementById(id);
 const fm = n => new Intl.NumberFormat('zh-TW',{style:'currency',currency:'TWD',maximumFractionDigits:0}).format(n);
@@ -117,18 +117,19 @@ function flowCard(){
   ev.sort((x,y)=>x.d-y.d);
   return `<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">本月即將發生</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-3">`+ev.map(e=>`<div class="flex justify-between items-center text-sm"><span><b class="mr-2">${n.getMonth()+1}/${e.d}</b>${e.t}${e.d<td?'（已到期，待更新餘額）':''}</span><span class="text-right"><b class="text-amber-700">${fm(e.a)}</b><div class="text-xs text-gray-400">${e.note}</div></span></div>`).join('')+'</div></section>';
 }
-let WL=false, LOANV=0;
-const TAB={'房貸':'fund','計畫 vs 實際':'plan','情境模擬':'plan','長期里程碑':'plan','淨資產走勢':'ov','本月即將發生':'ov','親友借款進度':'fund','各帳戶餘額明細':'fund','股票存摺':'stk'};
-const TABS=[['ov','總覽','<path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>'],['fund','資金','<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/><circle cx="16.5" cy="13.5" r="1.2"/>'],['stk','股票','<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'],['plan','規劃','<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>']];
+let WL=false, LOANV=0, EXPM=false;
+const CATS=['餐飲','交通','購物','生活','娛樂','醫療','其他'];
+const TAB={'記帳':'exp','待確認':'exp','近期明細':'exp','房貸':'fund','計畫 vs 實際':'plan','情境模擬':'plan','長期里程碑':'plan','淨資產走勢':'ov','本月即將發生':'ov','親友借款進度':'fund','各帳戶餘額明細':'fund','股票存摺':'stk'};
+const TABS=[['ov','總覽','<path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>'],['fund','資金','<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/><circle cx="16.5" cy="13.5" r="1.2"/>'],['stk','股票','<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'],['exp','記帳','<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>'],['plan','規劃','<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>']];
 let TB=localStorage.getItem('tab')||'ov', SV='inv', SA=false, TR='buy';
 function route(){ [...$('app').children].forEach(el=>{ const t=(el.querySelector('h3')||{}).textContent||''; let k='ov'; for(const key in TAB) if(t.indexOf(key)===0) k=TAB[key]; el.dataset.tab=k; }); showTab(TB,1); }
 function showTab(t,keep){ TB=t; localStorage.setItem('tab',t); [...$('app').children].forEach(el=>{ if(el.dataset.tab) el.classList.toggle('hidden',el.dataset.tab!==t); }); renderBar(); if(!keep) window.scrollTo(0,0); }
 function renderBar(){
   $('tabbar').innerHTML=TABS.map(t=>`<button onclick="showTab('${t[0]}')" class="flex-1 flex flex-col items-center py-1.5 rounded-full text-[11px] font-bold ${TB===t[0]?'tab-on text-milktea-800':'text-gray-500'}"><svg class="w-6 h-6 mb-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${t[2]}</svg>${t[1]}</button>`).join('');
-  const f=$('fab'); if(f) f.innerHTML=`<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${TB==='stk'?'<path d="M12 5v14M5 12h14"/>':'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'}</svg>`;
+  const f=$('fab'); if(f) f.innerHTML=`<svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${TB==='stk'||TB==='exp'?'<path d="M12 5v14M5 12h14"/>':'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'}</svg>`;
 }
 function closeTrade(){ $('tmodal').classList.add('hidden'); document.body.classList.remove('mo'); }
-function fabGo(){ if(!D) return; TB==='stk'?openTrade('buy'):openModal(); }
+function fabGo(){ if(!D) return; TB==='stk'?openTrade('buy'):TB==='exp'?openExpense():openModal(); }
 function accHTML(c){
   const all=c.accounts.slice().sort((a,b)=>b.balance-a.balance), vis=all.filter(a=>SA||a.balance>0||a.ccBill>0), hid=all.length-vis.length;
   return vis.map(a=>`<div class="flex justify-between items-center py-2.5"><div><b class="text-sm">${a.name}</b>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}${a.ccDay?'・'+a.ccDay+' 日自動扣':''}</div>`:''}</div><b>${M(a.balance)}</b></div>`).join('<div class="border-t border-gray-200/60"></div>')
@@ -149,6 +150,34 @@ function drawStock(){
   if(SV==='sold') h+=(sells.map(x=>row(x.name,`${x.d}・${x.shares} 股 @ ${x.price}`,M(Math.round(x.price*x.shares)),pl(x.pl))).join('')+lg.map(x=>row(x.name,`舊紀錄・${x.shares} 股`,M(Math.round(x.price*x.shares)),pl(x.pl))).join(''))||'<div class="text-sm text-gray-500 text-center py-6">還沒有賣出紀錄</div>';
   if(SV==='log') h+=(tr.length?`<button onclick="undoTrade()" class="w-full text-xs text-amber-700 py-2">↩︎ 撤銷最新一筆（${tr[0].name}）</button>`:'')+(tr.slice(0,40).map(x=>x.act==='息'?row('股利 '+x.name,`${x.d}${x.shares>0?'・配股 '+x.shares+' 股':''}`,M(x.pl),'現金股利'):row(`${x.act==='買'?'買進':'賣出'} ${x.name}`,`${x.d}・${x.shares} 股 @ ${x.price}${x.broker?'・'+x.broker:''}`,M(Math.round(x.price*x.shares)),`手續費 ${fm(x.fee)}${x.tax?'・稅 '+fm(x.tax):''}`)).join('')||'<div class="text-sm text-gray-500 text-center py-6">還沒有交易紀錄</div>');
   box.innerHTML=h+'</div>';
+}
+function expCards(){
+  const ex=D.expenses||[], n=new Date(), ok=ex.filter(x=>x.st==='已入帳'), by={};
+  const mon=ok.filter(x=>{const d=new Date(x.t);return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();}), tot=mon.reduce((a,x)=>a+x.amt,0);
+  mon.forEach(x=>by[x.cat]=(by[x.cat]||0)+x.amt);
+  const li=(x,p)=>`<div class="flex justify-between items-center py-2.5 text-sm"><div><b>${x.mer||x.cat}</b>${x.mg?`<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">已合併 ${x.mg+1} 則通知</span>`:''}<div class="text-xs text-gray-500">${new Date(x.t).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'})}・${x.src}${x.acc?'・'+x.acc:''}${p&&x.raw?'<div class="text-gray-400 break-all">'+x.raw+'</div>':''}</div></div><div class="text-right"><b>${x.amt?fm(x.amt):'—'}</b><div class="text-xs mt-1">${p&&x.amt?`<button onclick="expAct(${x.id},'exp_ok')" class="text-milktea-800 font-bold mr-3">確認</button>`:''}<button onclick="expAct(${x.id},'exp_del')" class="text-amber-700">刪除</button></div></div></div>`;
+  const hd=t=>`<h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">${t}</h3>`, bx=c=>`<div class="glass rounded-3xl p-5 shadow-sm divide-y divide-white/40">${c}</div>`;
+  let h=`<section>${hd('記帳')}<div class="glass rounded-3xl p-5 shadow-sm"><div class="text-xs text-gray-400">本月支出</div><div class="text-3xl font-extrabold">${M(tot)}</div>`+Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([c,v])=>`<div class="mt-2"><div class="flex justify-between text-xs"><span>${c}</span><span>${fm(v)}</span></div><div class="w-full bg-white/60 rounded-full h-1.5 overflow-hidden"><div class="bg-milktea-800 h-1.5 rounded-full" style="width:${v/tot*100}%"></div></div></div>`).join('')+'</div></section>';
+  const pend=ex.filter(x=>x.st==='待確認');
+  if(pend.length) h+=`<section>${hd('待確認的通知')}${bx(pend.map(x=>li(x,1)).join(''))}</section>`;
+  return h+`<section>${hd('近期明細')}${bx(ok.slice(-30).reverse().map(x=>li(x,0)).join('')||'<div class="text-sm text-gray-500 text-center py-6">還沒有記帳紀錄，按右下角＋開始</div>')}</section>`;
+}
+async function expAct(id,a){ if(a==='exp_del'&&!confirm('刪除這筆？已記入帳戶的金額會一併還原。')) return; await post({action:a,id},a==='exp_ok'?'✅ 已確認':'已刪除','失敗：'); }
+function openExpense(){
+  EXPM=true; $('tmodal').querySelector('h2').textContent='快速記帳';
+  const today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10), s='class="inp !text-left mt-1"', l=t=>`<label class="block text-sm font-bold">${t}`;
+  $('tform').innerHTML=l('金額')+`<input id="e_amt" inputmode="decimal" placeholder="0" oninput="" class="inp !text-left mt-1 !text-2xl"></label>`
+   +l('類別')+`<select id="e_cat" ${s}>${CATS.map(c=>`<option>${c}</option>`).join('')}</select></label>`+l('商家（可留空）')+`<input id="e_mer" ${s}></label>`
+   +l('帳戶')+`<select id="e_acc" ${s}><option value="">不連動帳戶</option>${D.cashData.accounts.map(a=>`<option>${a.name}</option>`).join('')}</select></label>`
+   +l('方式')+`<select id="e_pay" ${s}><option value="card">信用卡（記入該帳戶未出帳）</option><option value="cash">扣帳／現金（從該帳戶餘額扣）</option></select></label>`
+   +l('日期')+`<input id="e_dt" type="date" value="${today}" ${s}></label>`;
+  $('tprev').innerHTML=''; $('tmodal').classList.remove('hidden'); document.body.classList.add('mo');
+}
+async function saveExpense(){
+  const v=id=>$(id).value, amt=+v('e_amt')||0; if(!(amt>0)) return toast('請填金額');
+  const b=$('tbtn'); b.disabled=true;
+  if(await post({action:'expense',data:{amount:amt,cat:v('e_cat'),merchant:v('e_mer'),account:v('e_acc'),pay:v('e_pay'),date:v('e_dt')}},'✅ 已記帳','失敗：')) closeTrade();
+  b.disabled=false;
 }
 function loanCard(){
   const ls=D.loans||[]; if(!ls.length) return '';
@@ -178,7 +207,7 @@ function healthCard(){
 }
 function curHold(){ const hs=D.stockData.holdings, e=$('t_row'); if(TR!=='buy'&&e) return hs.find(x=>x.row===+e.value); const n=$('t_nm'), t=$('t_tk'); return hs.find(x=>(n&&n.value&&x.name===n.value.trim())||(t&&t.value&&String(x.ticker)===t.value.trim()))||null; }
 function openTrade(act,row){
-  TR=act; const hs=D.stockData.holdings, sel=row||(hs[0]&&hs[0].row), today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+  TR=act; EXPM=false; $('tmodal').querySelector('h2').textContent='記一筆交易'; const hs=D.stockData.holdings, sel=row||(hs[0]&&hs[0].row), today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
   const f=(id,l,x='',ty='text')=>`<label class="block text-sm font-bold">${l}<input id="${id}" type="${ty}" ${x} oninput="tcalc(this)" class="inp !text-left mt-1"></label>`;
   const tg=`<div class="flex gap-2">${[['buy','買進'],['sell','賣出'],['div','股利']].map(([k,t])=>`<button type="button" onclick="openTrade('${k}'${k!=='buy'&&sel?','+sel:''})" class="flex-1 py-2 rounded-xl font-bold ${TR===k?'bg-milktea-800 text-white':'bg-white/60'}">${t}</button>`).join('')}</div>`;
   const pick=act!=='buy'?`<select id="t_row" onchange="tcalc(this)" class="inp !text-left">${hs.map(x=>`<option value="${x.row}" ${x.row===sel?'selected':''}>${x.name}（${x.shares} 股${x.broker?'・'+x.broker:''}）</option>`).join('')}</select>`
@@ -224,6 +253,7 @@ async function lookup(){
 }
 async function undoTrade(){ if(confirm('撤銷最新一筆交易，庫存會一併還原。確定嗎？')) await post({action:'undo_trade'},'已撤銷','撤銷失敗：'); }
 async function saveTrade(){
+  if(EXPM) return saveExpense();
   const h=curHold(), v=id=>$(id)?$(id).value:'', n=+v('t_sh')||0, p=+v('t_px')||0;
   const d={type:TR,date:v('t_dt'),broker:v('t_br'),shares:n,price:p,fee:+v('t_fee')||0,tax:+v('t_tax')||0,note:v('t_nt'),cash:+v('t_cash')||0};
   if(TR!=='buy'){ if(!h) return toast('請選擇股票'); Object.assign(d,{row:h.row,ticker:h.ticker,name:h.name,broker:h.broker||d.broker}); }
@@ -290,6 +320,7 @@ function render(){
   if(hist.length>1) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">淨資產走勢</h3><div class="glass rounded-3xl p-5 shadow-sm">${spark(hist)}</div></section>`;
   if(tg.series&&tg.series.length>1) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">計畫 vs 實際</h3><div class="glass rounded-3xl p-5 shadow-sm"><div id="chartbar" class="flex gap-2 mb-3 flex-wrap"></div><div id="chartbox"></div></div></section>`;
 
+  h+=expCards();
   h+=loanCard();
   if(D.goals&&D.goals.length) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">長期里程碑（以淨資產計）</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-4">`+D.goals.map(g=>{
     const p=Math.max(0,Math.min(net/g.target*100,100)), left=g.date?Math.ceil((new Date(g.date)-Date.now())/864e5):null;
