@@ -13,10 +13,15 @@ module.exports = async (req, res) => {
     let b = {};
     if (req.method === 'GET') {
       b = { source: q.source || '自動', title: q.title || '', body: q.text || '' };
-      if (!b.body && q.data) {                       // Cloud 模型輸出：{"amount":..,"note":..}（可能被包在 ``` 裡）
+      if (!b.body && q.data) {                       // Cloud 模型輸出：{"amount":..,"merchant":..,"bank":..,"type":..}（舊版 note 也支援，可能被包在 ``` 或前後有說明文字）
         const s = String(q.data).replace(/```json|```/g, '').trim();
-        try { const d = JSON.parse(s); b.body = '刷卡消費 NT$' + (d.amount || '') + ' ' + (d.note || ''); b.merchant = d.note || ''; }
-        catch (e) { b.body = s; }
+        try {
+          const m = s.match(/\{[\s\S]*\}/), d = JSON.parse(m ? m[0] : s), amt = String(d.amount || '').replace(/[^\d.]/g, '');
+          const out = !d.type || /expense|支出|消費/i.test(d.type);
+          b.body = (out ? '刷卡消費 NT$' : '入帳 NT$') + amt;     // 非消費（入帳、退款、轉帳）會進「待確認」
+          b.merchant = d.merchant || d.note || '';
+          if (d.bank) b.source = d.bank;
+        } catch (e) { b.body = s; }
       }
     } else {
       b = req.body || {};
