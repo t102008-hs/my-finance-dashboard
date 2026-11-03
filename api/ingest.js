@@ -2,7 +2,7 @@
 // 呼叫方式（密鑰放網址 ?key= 或標頭 x-ingest-key 皆可）：
 //  診斷：  GET  /api/ingest?key=密鑰&ping=1                 → 逐層檢查 Vercel／Apps Script 是否連通
 //  測試：  GET  /api/ingest?key=密鑰&text=刷卡消費 NT$1      → 直接在 Safari 網址列試
-//  正式：  POST /api/ingest?key=密鑰，本文 = 通知內文，或「使用模型」輸出的 JSON（檔案或文字皆可）
+//  正式：  POST /api/ingest?key=密鑰[&source=App名稱]，本文 = 通知內文，或「使用模型」輸出的 JSON（檔案或文字皆可）
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   const q = req.query || {};
@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
       const L = String(raw).split(/\r?\n/);
       if (L.length >= 3 && L[0].trim() === '自動') { b.title = L[1].trim(); raw = L.slice(2).join(' ').trim(); }
     }
-    const j = await call({ action: 'ingest', source: b.source || '自動', title: b.title || '', body: raw, time: b.time, merchant: b.merchant });
+    const j = await call({ action: 'ingest', source: b.source || q.source || '自動', title: b.title || q.title || '', body: raw, time: b.time, merchant: b.merchant });
     j.echo = { mode, received: String(raw).slice(0, 80) };               // 手動執行捷徑時，可以在結果裡看到伺服器實際收到什麼
     return res.status(200).json(j);
   } catch (e) { return res.status(502).json({ status: 'error', message: String(e) }); }
