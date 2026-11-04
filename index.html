@@ -52,7 +52,7 @@
 <script>
 // 資料由 /api/data（Vercel）代理讀寫，網頁內不含 Apps Script 網址與密鑰
 const API_URL = '/api/data';
-const VER = '2026.11.10';
+const VER = '2026.11.11';
 
 const $ = id => document.getElementById(id);
 const fm = n => new Intl.NumberFormat('zh-TW',{style:'currency',currency:'TWD',maximumFractionDigits:0}).format(n);
@@ -167,6 +167,7 @@ function expCards(){
 }
 async function expAct(id,a){ if(a==='exp_del'&&!confirm('刪除這筆？已記入帳戶的金額會一併還原。')) return; await post({action:a,id},a==='exp_ok'?'✅ 已確認':'已刪除','失敗：'); }
 let EXPE=null;
+function sug(raw){ const a=[...String(raw).matchAll(/([\u4e00-\u9fff]{2,6})[\s~\-:：]*(?:NT\$|\$)?\s*[\d,]+/g)]; return a.length?a[a.length-1][1].slice(-3):''; }
 function expForm(x){
   const today=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10), s='class="inp !text-left mt-1"', l=t=>`<label class="block text-sm font-bold">${t}`, sel=(a,b)=>a===b?' selected':'';
   const cats=CATS.concat(x&&!CATS.includes(x.cat)?[x.cat]:[]);
@@ -175,7 +176,8 @@ function expForm(x){
    +l('商家（可留空）')+`<input id="e_mer" value="${x?x.mer:''}" ${s}></label>`
    +l('帳戶')+`<select id="e_acc" ${s}><option value="">不連動帳戶</option>${D.cashData.accounts.map(a=>`<option${sel(a.name,x&&x.acc)}>${a.name}</option>`).join('')}</select></label>`
    +l('帳戶類型')+`<select id="e_pay" ${s}><option value="card"${sel('card',x&&x.pay)}>信用卡（影響該卡未出帳）</option><option value="cash"${sel('cash',x&&x.pay)}>銀行帳戶／現金（影響餘額）</option></select></label>`
-   +(x?'':l('日期')+`<input id="e_dt" type="date" value="${today}" ${s}></label>`);
+   +(x?'':l('日期')+`<input id="e_dt" type="date" value="${today}" ${s}></label>`)
+   +(x&&x.raw?l('記住這種寫法（以後這家的通知只要含這個字句，就自動判成上面選的類型；不想記就清空）')+`<input id="e_kw" value="${x.kind==='待定'?sug(x.raw):''}" ${s}></label>`:'');
   $('tprev').innerHTML=x&&x.raw?`<span class="font-normal text-xs text-gray-500 break-all">原文：${x.raw}</span>`:''; $('tmodal').classList.remove('hidden'); document.body.classList.add('mo');
 }
 function openExpense(){ EXPM=true; EXPE=null; $('tmodal').querySelector('h2').textContent='快速記帳'; expForm(null); }
@@ -183,7 +185,7 @@ function openExpEdit(id){ const x=(D.expenses||[]).find(e=>e.id===id); if(!x) re
 async function saveExpense(){
   const v=id=>$(id).value, amt=+v('e_amt')||0; if(!(amt>0)) return toast('請填金額');
   const b=$('tbtn'); b.disabled=true;
-  const f={amount:amt,kind:v('e_kind'),cat:v('e_cat'),merchant:v('e_mer'),account:v('e_acc'),pay:v('e_pay')};
+  const kw=$('e_kw')?$('e_kw').value.trim():'', f={amount:amt,kind:v('e_kind'),learn:(kw&&['支出','收入','轉出','轉入'].includes(v('e_kind')))?{keyword:kw,kind:v('e_kind')}:null,cat:v('e_cat'),merchant:v('e_mer'),account:v('e_acc'),pay:v('e_pay')};
   const ok=EXPE?await post({action:'exp_edit',id:EXPE,...f},'✅ 已更新','失敗：'):await post({action:'expense',data:{...f,date:v('e_dt')}},'✅ 已記帳','失敗：');
   if(ok) closeTrade();
   b.disabled=false;
