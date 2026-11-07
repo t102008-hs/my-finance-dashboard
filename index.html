@@ -48,7 +48,7 @@
 <script>
 // 資料由 /api/data（Vercel）代理讀寫，網頁內不含 Apps Script 網址與密鑰
 const API_URL = '/api/data';
-const VER = '2026.11.13';
+const VER = '2026.11.14';
 
 const $ = id => document.getElementById(id);
 const fm = n => new Intl.NumberFormat('zh-TW',{style:'currency',currency:'TWD',maximumFractionDigits:0}).format(n);
@@ -110,7 +110,7 @@ function bars(s,ym){
 }
 let ANIM=true, WL=false, LOANV=0, EXPM=false, PAYM=false;
 const CATS=['餐飲','交通','購物','生活','娛樂','醫療','其他'];
-const TAB={'信用卡繳款':'fund','記帳':'exp','待確認':'exp','近期明細':'exp','房貸':'fund','計畫 vs 實際':'plan','情境模擬':'plan','長期里程碑':'plan','淨資產走勢':'ov','本月即將發生':'ov','親友借款進度':'fund','各帳戶餘額明細':'fund','股票存摺':'stk'};
+const TAB={'我的資金':'fund','信用卡繳款':'fund','記帳':'exp','待確認':'exp','近期明細':'exp','房貸':'fund','計畫 vs 實際':'plan','情境模擬':'plan','長期里程碑':'plan','淨資產走勢':'ov','本月即將發生':'ov','親友借款進度':'fund','各帳戶餘額明細':'fund','股票存摺':'stk'};
 const TABS=[['ov','總覽','<path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>'],['fund','資金','<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/><circle cx="16.5" cy="13.5" r="1.2"/>'],['stk','股票','<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>'],['exp','記帳','<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>'],['plan','規劃','<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>']];
 let TB=localStorage.getItem('tab')||'ov', SV='inv', SA=false, TR='buy';
 function route(){ [...$('app').children].forEach(el=>{ const t=(el.querySelector('h3')||{}).textContent||''; let k='ov'; for(const key in TAB) if(t.indexOf(key)===0) k=TAB[key]; el.dataset.tab=k; }); showTab(TB,1); }
@@ -123,8 +123,8 @@ function closeTrade(){ $('tmodal').classList.add('hidden'); document.body.classL
 function fabGo(){ if(!D) return; TB==='stk'?openTrade('buy'):TB==='exp'?openExpense():openModal(); }
 function accHTML(c){
   const all=c.accounts.slice().sort((a,b)=>b.balance-a.balance), vis=all.filter(a=>SA||a.balance>0||a.ccBill>0), hid=all.length-vis.length;
-  return vis.map(a=>`<div class="flex justify-between items-center py-2.5"><div><b class="text-sm">${a.name}</b>${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}${a.ccDay?'・'+a.ccDay+' 日自動扣':''}</div>`:''}</div><b>${M(a.balance)}</b></div>`).join('<div class="border-t border-gray-200/60"></div>')
-   +(hid||SA?`<button onclick="SA=!SA;render()" class="w-full text-xs text-gray-500 pt-3">${SA?'收合 $0 帳戶':'顯示其他 '+hid+' 個 $0 帳戶'}</button>`:'');
+  return vis.map(a=>`<div class="flex justify-between items-center py-2.5"><div><b class="text-sm">${a.name}</b>${driftHtml(a.name)}${a.ccBill>0?`<div class="text-xs text-amber-700">卡費 ${M(a.ccBill)}${a.ccDay?'・'+a.ccDay+' 日自動扣':''}</div>`:''}</div><b>${M(a.balance)}</b></div>`).join('<div class="border-t border-gray-200/60"></div>')
+   +(hid||SA?`<button onclick="SA=!SA;openAccounts()" class="w-full text-xs text-gray-500 pt-3">${SA?'收合 $0 帳戶':'顯示其他 '+hid+' 個 $0 帳戶'}</button>`:'');
 }
 const taxRate=tk=>{tk=String(tk); return /^00\d+B$/.test(tk)?0:tk.startsWith('00')?0.001:0.003;};   // 債券ETF證交稅目前免徵（請留意法規期限）
 function drawStock(){
@@ -190,7 +190,7 @@ function openLoan(i,f){
   $('sheet').classList.remove('hidden'); document.body.classList.add('mo');
 }
 const WD=['日','一','二','三','四','五','六'];
-const IC={inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',check:'<path d="M20 6L9 17l-5-5"/>',home:'<path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',card:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',coin:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10"/>',chev:'<path d="M9 6l6 6-6 6"/>'};
+const IC={inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',check:'<path d="M20 6L9 17l-5-5"/>',home:'<path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/>',card:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',coin:'<circle cx="12" cy="12" r="9"/><path d="M12 7v10"/>',chev:'<path d="M9 6l6 6-6 6"/>',wallet:'<path d="M3 7h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7l12-3v3"/><circle cx="16.5" cy="13.5" r="1.2"/>',people:'<circle cx="9" cy="8" r="3"/><path d="M3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1"/><path d="M17 11a3 3 0 1 0 0-6M21 20v-1a4 4 0 0 0-3-3.9"/>'};
 const ico=(k,cls='w-5 h-5')=>`<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
 function upcoming(days){
   const c=D.cashData, now=new Date(), t0=new Date(now.getFullYear(),now.getMonth(),now.getDate()), ev=[];
@@ -227,10 +227,38 @@ function homeView(){
    (ev.length?ev.map(e=>`<div class="flex items-center gap-3 py-2"><div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${e.cl}">${ico(e.k)}</div><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">${e.t}</div><div class="text-xs text-gray-500">${e.d.getMonth()+1}/${e.d.getDate()} 週${WD[e.d.getDay()]}・${dl(e)}・${e.s}</div></div><b class="${e.a>0?'text-green-600':''}">${e.a>0?'+':'−'}${fm(Math.abs(e.a))}</b></div>`).join(''):'<div class="text-sm text-gray-500 py-1">未來 7 天沒有預定的扣款</div>')+'</div></section>';
   const bond=(st?st.holdings:[]).filter(x=>/^00\d+B$/.test(x.ticker)).reduce((a,x)=>a+x.marketValue,0), stock=(st?st.totalMarketValue:0)-bond, cash=c.totalCash, tot=cash+stock+bond;
   const segs=[['現金',cash,'#8aa899'],['股票',stock,'#b9805e'],['債券',bond,'#e0b88a']].filter(x=>x[1]>0), R=16, CI=2*Math.PI*R; let acc=0;
-  const donut=tot>0?`<svg viewBox="0 0 46 46" class="w-14 h-14 shrink-0">${segs.map(s=>{const len=s[1]/tot*CI,el=`<circle cx="23" cy="23" r="${R}" fill="none" stroke="${s[2]}" stroke-width="8" stroke-dasharray="${len.toFixed(1)} ${(CI-len).toFixed(1)}" stroke-dashoffset="${(-acc).toFixed(1)}" transform="rotate(-90 23 23)"/>`;acc+=len;return el;}).join('')}</svg>`:'';
-  h+=`<section class="grid grid-cols-2 gap-3"><div class="glass rounded-3xl p-4 shadow-sm tap cursor-pointer" onclick="openNet()"><div class="text-xs text-gray-500">淨資產${WL?'（含房貸）':''}</div><div class="text-lg font-extrabold mt-0.5" data-count="${netV}">${fm(netV)}</div>${miniSpark(hist.map(x=>x.net))}</div>
-   <div class="glass rounded-3xl p-4 shadow-sm"><div class="text-xs text-gray-500 mb-2">資產配置</div><div class="flex items-center gap-2">${donut}<div class="text-[11px] leading-relaxed min-w-0">${segs.map(s=>`<div class="flex items-center gap-1"><i class="inline-block w-2 h-2 rounded-full shrink-0" style="background:${s[2]}"></i>${s[0]} ${(s[1]/tot*100).toFixed(0)}%</div>`).join('')}</div></div></div></section>`;
+  const donut=tot>0?`<svg viewBox="0 0 46 46" class="w-24 h-24">${segs.map(s=>{const len=s[1]/tot*CI,el=`<circle cx="23" cy="23" r="${R}" fill="none" stroke="${s[2]}" stroke-width="7" stroke-dasharray="${len.toFixed(1)} ${(CI-len).toFixed(1)}" stroke-dashoffset="${(-acc).toFixed(1)}" transform="rotate(-90 23 23)"/>`;acc+=len;return el;}).join('')}</svg>`:'<div class="text-xs text-gray-400">尚無資料</div>';
+  const dNet=hist.length>1?hist[hist.length-1].net-hist[hist.length-2].net:null;
+  h+=`<section class="grid grid-cols-2 gap-3 items-stretch"><div class="glass rounded-3xl p-4 shadow-sm tap cursor-pointer flex flex-col" onclick="openNet()"><div class="text-xs text-gray-500">淨資產${WL?'（含房貸）':''}</div><div class="flex-1 flex flex-col justify-center py-3"><div class="text-xl font-extrabold" data-count="${netV}">${fm(netV)}</div>${miniSpark(hist.map(x=>x.net))}</div><div class="text-xs text-gray-500 min-h-[1rem]">${dNet!==null?'較上次核對 '+(dNet>=0?'+':'−')+fm(Math.abs(dNet)):''}</div></div>
+   <div class="glass rounded-3xl p-4 shadow-sm flex flex-col"><div class="text-xs text-gray-500">資產配置</div><div class="flex-1 flex items-center justify-center py-3">${donut}</div><div class="flex flex-wrap justify-center gap-x-3 gap-y-1 text-sm">${segs.map(s=>`<span class="flex items-center gap-1"><i class="inline-block w-2.5 h-2.5 rounded-full" style="background:${s[2]}"></i>${s[0]} ${(s[1]/tot*100).toFixed(0)}%</span>`).join('')}</div></div></section>`;
   return h;
+}
+function tile(ic,cl,title,main,sub,bar,fn){
+  return `<button onclick="${fn}" class="tap glass rounded-3xl p-4 shadow-sm w-full text-left flex items-center gap-3"><div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${cl}">${ico(ic,'w-6 h-6')}</div><div class="flex-1 min-w-0"><div class="text-xs text-gray-500">${title}</div><div class="text-xl font-extrabold leading-tight">${main}</div><div class="text-xs text-gray-500 mt-0.5 truncate">${sub}</div>${bar!=null?`<div class="w-full bg-white/60 rounded-full h-1.5 mt-2 overflow-hidden"><div class="bg-milktea-800 h-1.5 rounded-full" style="width:${Math.max(0,Math.min(bar,100))}%"></div></div>`:''}</div>${ico('chev','w-5 h-5 text-gray-400 shrink-0')}</button>`;
+}
+function fundView(){
+  const c=D.cashData, db=D.debtData, ls=D.loans||[], ac=c.accounts, nz=ac.filter(a=>a.balance>0).length, cards=ac.filter(a=>a.ccBill>0||a.ccDay), nc=upcoming(35).filter(e=>e.k==='card')[0];
+  let t=tile('wallet','bg-milktea-200 text-milktea-800','銀行帳戶',fm(c.totalCash),`${nz} 個帳戶有餘額`,null,'openAccounts()');
+  if(cards.length) t+=tile('card','bg-amber-100 text-amber-800','信用卡未出帳',fm(c.totalCreditCardDebt),nc?`最近 ${nc.d.getMonth()+1}/${nc.d.getDate()} ${nc.t.replace(' 信用卡','')} ${fm(-nc.a)}`:`${cards.length} 張卡`,null,'openCards()');
+  ls.forEach((l,i)=>{ t+=tile('home','bg-milktea-200 text-milktea-800',l.name+'・剩餘本金',fm(l.balance),l.next?`下次 ${l.next[1].slice(5).replace('-','/')}・${fm(l.next[2])}`:'已還清',(1-l.balance/l.amount)*100,`openLoanDetail(${i})`); });
+  if(db.totalBorrowed>0){ const pg=Math.round(db.totalRepaid/db.totalBorrowed*100); t+=tile('people','bg-green-100 text-green-700','親友借款',db.totalRemaining>0?fm(db.totalRemaining):'已全數還清',db.totalRemaining>0?`已還 ${pg}%・${db.debts.length} 位待還`:'都還清了',pg,'openDebts()'); }
+  return `<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">我的資金</h3><div class="space-y-3">${t}</div></section>`;
+}
+function openAccounts(){
+  const c=D.cashData;
+  openSheetHtml('銀行帳戶',`<div class="text-xs text-gray-500 mb-1">合計 ${fm(c.totalCash)}</div>`+accHTML(c)+`<button onclick="closeSheet();openModal()" class="w-full mt-4 py-3 rounded-xl bg-milktea-800 text-white font-bold">全面更新</button>`);
+}
+function openCards(){
+  const ac=D.cashData.accounts, cs=ac.filter(a=>a.ccBill>0||a.ccDay);
+  openSheetHtml('信用卡',cs.map(a=>`<div class="flex justify-between items-center py-3 border-b border-white/30"><div class="min-w-0"><b class="text-sm">${a.name}</b><div class="text-xs text-gray-500">${a.ccDay?'每月 '+a.ccDay+' 日自動扣（'+(a.payer||a.name)+'）':'未設定自動扣款'}</div></div><div class="text-right"><b class="${a.ccBill>0?'text-amber-700':''}">${fm(a.ccBill)}</b><div class="mt-1"><button onclick="closeSheet();openPayCard(${ac.indexOf(a)})" class="text-xs text-milktea-800 font-bold">記一筆繳款</button></div></div></div>`).join('')||'<div class="text-sm text-gray-500 py-4">還沒有信用卡資料</div>');
+}
+function openLoanDetail(i){
+  const l=D.loans[i], pct=(1-l.balance/l.amount)*100, g=(t,v)=>`<div><div class="text-xs text-gray-400">${t}</div><b>${v}</b></div>`;
+  openSheetHtml(l.name,`<div class="text-3xl font-extrabold">${fm(l.balance)}</div><div class="text-xs text-gray-400">剩餘本金（已還 ${pct.toFixed(1)}%）</div><div class="w-full bg-white/60 rounded-full h-2.5 mt-3 overflow-hidden"><div class="bg-milktea-800 h-2.5 rounded-full" style="width:${pct}%"></div></div><div class="grid grid-cols-2 gap-y-3 text-sm mt-4">${g('年利率',l.rate+'%・'+l.n+' 期')}${g('已繳／剩餘',l.paid+'／'+l.remain+' 期')}${g('月付金',fm(l.monthly))}${g('下次繳款',l.next?l.next[1].slice(5).replace('-','/')+'・'+fm(l.next[2]):'已還清')}${g('預計還清',l.endDate.slice(0,7).replace('-','/'))}${g('剩餘利息總額','<span class="text-amber-700">'+fm(l.interestLeft)+'</span>')}</div><button onclick="openLoan(${i})" class="w-full mt-4 py-2.5 rounded-xl bg-white/60 text-sm font-bold text-milktea-800">查看攤還表 ›</button>`);
+}
+function openDebts(){
+  const db=D.debtData;
+  openSheetHtml('親友借款',`<div class="text-xs text-gray-500">剩餘待還 ${fm(db.totalRemaining)}</div><div class="space-y-5 mt-3">`+(db.debts.length?db.debts.map(d=>`<div><div class="flex justify-between items-end mb-1.5"><b>${d.name}</b><span class="text-xs text-gray-500">已還 ${d.progress}%・剩 ${fm(d.remaining)}</span></div><div class="w-full bg-white/60 rounded-full h-2.5 overflow-hidden"><div class="bg-milktea-800 h-2.5 rounded-full" style="width:${d.progress}%"></div></div></div>`).join(''):'<div class="text-center text-gray-500 py-4">借款已全數還清</div>')+'</div>'+payoff(D.history||[],db.totalRemaining));
 }
 function openSheetHtml(title,html){ $('sheetTitle').textContent=title; $('sheetBody').innerHTML=html; $('sheet').classList.remove('hidden'); document.body.classList.add('mo'); }
 function sRow(l,v,cls){ return `<div class="flex justify-between py-2.5 text-sm border-b border-white/30"><span class="text-gray-500">${l}</span><b class="${cls||''}">${v}</b></div>`; }
@@ -253,17 +281,6 @@ function animHome(){
   const go=ANIM; ANIM=false; if(!go) return;
   document.querySelectorAll('[data-count]').forEach(el=>{ const to=+el.dataset.count, t0=performance.now(); const f=t=>{ const k=Math.min((t-t0)/700,1), e=1-Math.pow(1-k,3); el.textContent=fm(Math.round(to*e)); if(k<1) requestAnimationFrame(f); }; requestAnimationFrame(f); });
   setTimeout(()=>document.querySelectorAll('.ring').forEach(r=>r.setAttribute('stroke-dashoffset',r.dataset.final)),60);
-}
-function loanCard(){
-  const ls=D.loans||[]; if(!ls.length) return '';
-  return `<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">房貸／貸款</h3>`+ls.map((l,idx)=>{
-    const pct=(1-l.balance/l.amount)*100, g=(t,v)=>`<div><div class="text-xs text-gray-400">${t}</div><b>${v}</b></div>`;
-    return `<div class="glass rounded-3xl p-5 shadow-sm mb-3"><div class="flex justify-between items-end"><b>${l.name}</b><span class="text-xs text-gray-500">年利率 ${l.rate}%・${l.n} 期</span></div>
-    <div class="text-3xl font-extrabold mt-1">${M(l.balance)}</div><div class="text-xs text-gray-400">剩餘本金（已還 ${pct.toFixed(1)}%）</div>
-    <div class="w-full bg-white/60 rounded-full h-2.5 mt-3 overflow-hidden"><div class="bar bg-milktea-800 h-2.5 rounded-full" style="width:${pct}%"></div></div>
-    <div class="grid grid-cols-2 gap-y-3 text-sm mt-4">${g('已繳／剩餘',l.paid+'／'+l.remain+' 期')}${g('月付金',M(l.monthly))}${g('下次繳款',l.next?l.next[1].slice(5).replace('-','/')+'・'+M(l.next[2]):'已還清')}${g('預計還清',l.endDate.slice(0,7).replace('-','/'))}${g('剩餘利息總額','<span class="text-amber-700">'+M(l.interestLeft)+'</span>')}</div>
-    <button onclick="openLoan(${idx})" class="w-full mt-4 py-2.5 rounded-xl bg-white/60 text-sm font-bold text-milktea-800">查看攤還表 ›</button></div>`;
-  }).join('')+'</section>';
 }
 function healthCard(){
   const cf=D.config||{}, c=D.cashData, st=D.stockData, assets=c.totalCash+(st?st.totalMarketValue:0), debt=c.totalCreditCardDebt+D.debtData.totalRemaining, rows=[];
@@ -372,20 +389,13 @@ function render(){
   if(tg.series&&tg.series.length>1) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">計畫 vs 實際</h3><div class="glass rounded-3xl p-5 shadow-sm"><div id="chartbar" class="flex gap-2 mb-3 flex-wrap"></div><div id="chartbox"></div></div></section>`;
 
   h+=expCards();
-  h+=payCards();
-  h+=loanCard();
+  h+=fundView();
   if(D.goals&&D.goals.length) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">長期里程碑（以淨資產計）</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-4">`+D.goals.map(g=>{
     const p=Math.max(0,Math.min(net/g.target*100,100)), left=g.date?Math.ceil((new Date(g.date)-Date.now())/864e5):null;
     return `<div><div class="flex justify-between text-sm mb-1.5"><b>${g.name}</b><span class="text-xs text-gray-500">${p.toFixed(0)}%・尚缺 ${M(Math.max(g.target-net,0))}${left!=null?'・'+(left>0?left+' 天後':'已到期'):''}</span></div><div class="w-full bg-white/60 rounded-full h-2.5 overflow-hidden"><div class="bar bg-milktea-800 h-2.5 rounded-full" style="width:${p}%"></div></div></div>`;}).join('')+'</div></section>';
-  h+=`<section><div class="flex justify-between items-end mb-3 pl-2"><h3 class="text-lg font-bold text-milktea-800">親友借款進度</h3><span class="text-sm font-bold text-amber-700">剩餘待還 ${M(db.totalRemaining)}</span></div>
-    <div class="glass rounded-3xl p-6 shadow-sm space-y-5">`;
-  h+= db.debts.length ? db.debts.map(d=>`<div><div class="flex justify-between items-end mb-1.5"><b class="text-gray-700">${d.name}</b><span class="text-xs text-gray-500">已還 ${d.progress}%・剩 ${M(d.remaining)}</span></div>
-    <div class="w-full bg-white/60 rounded-full h-2.5 overflow-hidden"><div class="bar db bg-milktea-800 h-2.5 rounded-full" data-w="${d.progress}" style="width:0%"></div></div></div>`).join('') : '<div class="text-center text-gray-500">🎉 借款已全數還清</div>';
-  h+=payoff(D.history||[],db.totalRemaining)+'</div></section>';
 
   if(st) h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">股票存摺</h3><div id="stkbox"></div></section>`;
 
-  h+=`<section><div class="flex justify-between items-end mb-3 pl-2"><h3 class="text-lg font-bold text-milktea-800">各帳戶餘額明細</h3><span class="text-sm text-gray-500">合計 ${M(c.totalCash)}</span></div><div class="glass rounded-3xl p-4 shadow-sm">${accHTML(c)}</div></section>`;
 
   h+=`<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">情境模擬</h3><div class="glass rounded-3xl p-5 shadow-sm space-y-3" id="sim">
     ${st?st.holdings.map(s=>`<label class="flex justify-between items-center text-sm"><span><input type="checkbox" class="sim-s mr-2" data-v="${sellNet(s)}">賣出 ${s.name}${s.broker?'<span class="text-xs text-gray-400">（'+s.broker+'）</span>':''}</span><span class="text-right"><b>${M(sellNet(s))}</b><div class="text-xs text-gray-400">已扣手續費與證交稅</div></span></label>`).join(''):''}
@@ -401,11 +411,6 @@ function driftHtml(n){
   const d=(D.drift||{})[n]; if(!d||(!d.bal&&!d.cc)) return '';
   const sg=v=>(v>0?'+':'−')+fm(Math.abs(v));
   return `<div class="text-[10px] text-gray-500 leading-tight">自動變動 ${d.bal?'餘額'+sg(d.bal)+' ':''}${d.cc?'未出帳'+sg(d.cc):''}</div>`;
-}
-function payCards(){
-  const ac=D.cashData.accounts, cs=ac.filter(a=>a.ccBill>0||a.ccDay);
-  if(!cs.length) return '';
-  return `<section><h3 class="text-lg font-bold text-milktea-800 mb-3 pl-2">信用卡繳款</h3><div class="glass rounded-3xl p-4 shadow-sm divide-y divide-white/40">`+cs.map(a=>`<div class="flex justify-between items-center py-2.5 text-sm"><div><b>${a.name}</b><div class="text-xs text-gray-500">${a.ccDay?'每月 '+a.ccDay+' 日自動扣（'+(a.payer||a.name)+'）':'未設定自動扣款'}</div></div><div class="text-right"><b class="text-amber-700">${fm(a.ccBill)}</b><div class="mt-1"><button onclick="openPayCard(${ac.indexOf(a)})" class="text-xs text-milktea-800 font-bold">記一筆繳款</button></div></div></div>`).join('')+'</div></section>';
 }
 function payPick(){ const a=D.cashData.accounts.find(x=>x.name===$('p_card').value); if(!a) return; $('p_amt').value=a.ccBill||''; $('p_from').value=a.payer||a.name; }
 function openPayCard(i){
