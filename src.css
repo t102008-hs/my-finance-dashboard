@@ -46,3 +46,7 @@ html,body{overflow-x:hidden;max-width:100%}
 .ringok{stroke:#4fa37f}.ringwarn{stroke:#e0a43a}
 .track{stroke:rgba(139,90,66,.16)}.rt{fill:#734833}.rt2{fill:#9a8a7f}
 @media (prefers-color-scheme:dark){.track{stroke:rgba(255,255,255,.1)}.rt{fill:#f0e2d6}.rt2{fill:#b3a196}}
+
+/* 股票紅漲綠跌的小標籤、記帳類別選取外框 */
+.kcs{box-shadow:0 0 0 3px rgba(139,90,66,.45)}
+@media (prefers-color-scheme:dark){.bg-red-100{background:#4a2222}.text-red-600{color:#f87171}.kcs{box-shadow:0 0 0 3px rgba(240,226,214,.55)}}
