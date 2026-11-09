@@ -5,6 +5,9 @@ Google Sheet（資料）＋ Apps Script（Code.gs）＋ GitHub（網頁）＋ Ve
 ## Vercel 環境變數
 APPS_URL（Apps Script /exec）、API_TOKEN（同 Apps Script 指令碼屬性）、APP_PASSWORD（網頁登入密碼）。
 
+## 設定
+日常調整請直接在 App 右上角的齒輪進入「設定」，不必再開試算表；App 內的修改會寫回下面這幾張表，直接在試算表改也一樣有效。
+
 ## 設定表（依「你要做什麼」分成五張）
 | 工作表 | 用途 | 平常要動嗎 |
 |---|---|---|
