@@ -16,7 +16,7 @@
 </head>
 <body class="bg-milktea-100 text-milktea-900 font-sans min-h-screen p-4 sm:p-8" style="padding-bottom:calc(10rem + env(safe-area-inset-bottom))">
 
-<header class="max-w-2xl mx-auto flex justify-between items-center px-1 mb-4"><h1 class="text-lg font-bold text-milktea-800">理財</h1><div id="status" class="text-xs text-gray-500">載入中…</div></header>
+<header class="max-w-2xl mx-auto flex justify-between items-center px-1 mb-4"><h1 class="text-lg font-bold text-milktea-800">理財</h1><div class="flex items-center gap-3"><div id="status" class="text-xs text-gray-500">載入中…</div><button onclick="openSettings()" class="tap w-9 h-9 rounded-full bg-white/60 flex items-center justify-center text-milktea-800" aria-label="設定"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg></button></div></header>
 
 <main id="app" class="max-w-2xl mx-auto space-y-8">
   <div class="glass rounded-3xl p-6 space-y-3 animate-pulse"><div class="h-4 w-40 bg-milktea-200 rounded"></div><div class="h-10 w-56 bg-milktea-200 rounded"></div><div class="h-3 bg-milktea-200 rounded"></div></div>
@@ -43,12 +43,13 @@
 <div id="sheet" class="hidden fixed inset-0 bg-milktea-900/40 backdrop-blur-md z-50 flex flex-col justify-end sm:justify-center items-center" onclick="if(event.target===this)closeSheet()"><div class="bg-milktea-50 w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[88vh] flex flex-col shadow-2xl" style="padding-bottom:calc(1.25rem + env(safe-area-inset-bottom))">
   <div class="flex justify-between items-center mb-3"><h2 id="sheetTitle" class="text-lg font-bold"></h2><button onclick="closeSheet()" class="w-9 h-9 rounded-full bg-white/60 text-lg" aria-label="關閉">✕</button></div>
   <div id="sheetBody" class="flex-1" style="overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain"></div></div></div>
+<div id="settings" class="hidden fixed inset-0 z-[55] bg-milktea-100 overflow-y-auto" style="padding-top:env(safe-area-inset-top);overscroll-behavior:contain"><div class="max-w-2xl mx-auto p-4" style="padding-bottom:calc(6rem + env(safe-area-inset-bottom))"><div class="flex items-center gap-3 mb-4"><button onclick="setBack()" class="tap w-10 h-10 rounded-full bg-white/60 flex items-center justify-center text-milktea-800" aria-label="返回"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button><h2 id="setTitle" class="text-xl font-bold text-milktea-800">設定</h2></div><div id="setBody" class="space-y-3"></div></div></div>
 <div id="toast" class="fixed left-1/2 -translate-x-1/2 top-4 z-[60] hidden bg-milktea-900 text-white text-sm px-4 py-2 rounded-full shadow-lg"></div>
 
 <script>
 // 資料由 /api/data（Vercel）代理讀寫，網頁內不含 Apps Script 網址與密鑰
 const API_URL = '/api/data';
-const VER = '2026.11.15';
+const VER = '2026.11.16';
 
 const $ = id => document.getElementById(id);
 const fm = n => new Intl.NumberFormat('zh-TW',{style:'currency',currency:'TWD',maximumFractionDigits:0}).format(n);
@@ -292,6 +293,80 @@ function homeView(){
    <div class="glass rounded-3xl p-4 shadow-sm flex flex-col"><div class="text-xs text-gray-500">資產配置</div><div class="flex-1 flex items-center justify-center py-3">${donut}</div><div class="flex flex-wrap justify-center gap-x-3 gap-y-1 text-sm">${segs.map(s=>`<span class="flex items-center gap-1"><i class="inline-block w-2.5 h-2.5 rounded-full" style="background:${s[2]}"></i>${s[0]} ${(s[1]/tot*100).toFixed(0)}%</span>`).join('')}</div></div></section>`;
   return h;
 }
+const GENL=[['房貸月付金覆寫','留空＝自動使用貸款算出的月付金','n'],['資料過期提醒（天）','超過幾天沒有全面更新，首頁會提醒','n'],['提醒信間隔（天）','每月提醒信：距上次更新超過幾天才寄','n'],['異常變動門檻（%）','餘額變動超過這個比例，儲存前會再確認','n'],['房貸每月扣款日','有設定貸款時，會自動採用貸款的繳款日','n'],['卡費代墊帳戶','信用卡繳款帳戶餘額不足時，由這個帳戶補','a'],['賣股手續費預設折扣','1＝無折扣，2.8 折填 0.28；各券商另設於「股票券商」','n'],['每月固定支出','用來算緊急預備金可撐幾個月','n'],['通知診斷','開啟後每則通知都記到試算表「紀錄」分頁，測好請關閉','t']];
+Object.assign(IC,{trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',flag:'<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>',sliders:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>'});
+let SET=null, SECT='', AI=0;
+const esc=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+const api=async b=>{ const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','x-pass':tok()},body:JSON.stringify(b)}); return r.json(); };
+const fld=(l,id,v,t,hint)=>`<label class="block text-sm font-bold">${l}<input id="${id}" type="${t==='date'?'date':'text'}" ${t==='number'?'inputmode="decimal"':''} value="${esc(v)}" class="inp !text-left mt-1">${hint?`<span class="block text-xs font-normal text-gray-500 mt-1">${hint}</span>`:''}</label>`;
+const selF=(l,id,opts,val)=>`<label class="block text-sm font-bold">${l}<select id="${id}" class="inp !text-left mt-1">${opts.map(o=>`<option value="${esc(o[0])}"${String(o[0])===String(val)?' selected':''}>${o[1]}</option>`).join('')}</select></label>`;
+const scard=h=>`<div class="glass rounded-2xl p-4 space-y-3">${h}</div>`;
+const saveBtn=fn=>`<button onclick="${fn}" class="w-full py-3.5 rounded-xl bg-milktea-800 text-white font-bold">儲存</button>`;
+const addBtn=(fn,t)=>`<button onclick="${fn}" class="w-full py-2.5 rounded-xl bg-white/60 font-bold text-sm text-milktea-800">${t}</button>`;
+const trashBtn=fn=>`<button onclick="${fn}" class="text-amber-700" aria-label="刪除">${ico('trash','w-5 h-5')}</button>`;
+const mrow=(ic,cl,t,sub,fn)=>`<button onclick="${fn}" class="tap glass rounded-2xl p-4 w-full text-left flex items-center gap-3"><div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${cl}">${ico(ic)}</div><div class="flex-1 min-w-0"><div class="text-sm font-bold">${t}</div><div class="text-xs text-gray-500 truncate">${sub}</div></div>${ico('chev','w-4 h-4 text-gray-400')}</button>`;
+function setView(title,html){ $('setTitle').textContent=title; $('setBody').innerHTML=html; $('settings').scrollTop=0; }
+async function loadSettings(){ SET=null; try{ const j=await api({action:'settings_get'}); if(j.status!=='success') throw new Error(j.message); SET=j.settings; }catch(e){ toast('讀取設定失敗：'+e.message,6000); } }
+async function openSettings(){
+  if(!D) return toast('資料載入中，請稍後');
+  $('settings').classList.remove('hidden'); document.body.classList.add('mo'); SECT='';
+  setView('設定','<div class="text-sm text-gray-500 text-center py-10">載入中…</div>');
+  await loadSettings(); if(SET) setMenu();
+}
+function setMenu(){
+  SECT=''; const S=SET;
+  setView('設定',mrow('sliders','bg-milktea-200 text-milktea-800','一般設定','提醒天數、房貸、手續費預設、固定支出',"setOpen('gen')")+mrow('card','bg-amber-100 text-amber-800','帳戶與信用卡','扣款日、繳款帳戶、通知來源',"setOpen('acc')")+mrow('inbox','bg-milktea-200 text-milktea-800','通知規則',S.rules.length+' 條自訂字句',"setOpen('rules')")+mrow('coin','bg-green-100 text-green-700','股票券商','券商與手續費折扣',"setOpen('stk')")+mrow('home','bg-amber-100 text-amber-800','貸款',S.loans.length+' 筆貸款・'+S.changes.length+' 筆利率變更',"setOpen('loan')")+mrow('flag','bg-green-100 text-green-700','長期目標',S.goals.length+' 個目標',"setOpen('goal')")+mrow('refresh','bg-milktea-200 text-milktea-800','系統','版本、重新載入、登出',"setOpen('sys')"));
+}
+function setBack(){ if(SECT==='accedit') return setOpen('acc'); if(SECT) return setMenu(); $('settings').classList.add('hidden'); document.body.classList.remove('mo'); }
+function setOpen(s){ SECT=s; ({gen:setGen,acc:setAcc,rules:setRules,stk:setStk,loan:setLoan,goal:setGoal,sys:setSys})[s](); }
+async function setSave(section,data){
+  try{ const j=await api({action:'settings_save',section,data}); if(j.status!=='success') throw new Error(j.message); toast('✅ 已儲存'); await loadSettings(); load(); return !!SET; }
+  catch(e){ toast('儲存失敗：'+e.message,6000); return false; }
+}
+function setGen(){
+  const g=SET.general, ac=D.cashData.accounts.map(a=>[a.name,a.name]);
+  setView('一般設定',GENL.map((x,i)=>scard(`<div class="text-sm font-bold">${x[0]}</div>`+(x[2]==='a'?`<select id="g${i}" class="inp !text-left">${[['','（不指定）']].concat(ac).map(o=>`<option value="${esc(o[0])}"${o[0]===g[i]?' selected':''}>${o[1]}</option>`).join('')}</select>`:x[2]==='t'?`<label class="flex items-center justify-between"><span class="text-sm">開啟診斷</span><input id="g${i}" type="checkbox" ${Number(g[i])===1?'checked':''} class="w-6 h-6"></label>`:`<input id="g${i}" inputmode="decimal" value="${esc(g[i])}" class="inp !text-left">`)+`<div class="text-xs text-gray-500">${x[1]}</div>`)).join('')+saveBtn('saveGen()'));
+}
+async function saveGen(){ if(await setSave('general',{values:GENL.map((x,i)=>x[2]==='t'?($('g'+i).checked?1:0):$('g'+i).value.trim())})) setOpen('gen'); }
+function setAcc(){
+  setView('帳戶與信用卡',SET.accounts.map((a,i)=>`<button onclick="editAcc(${i})" class="tap glass rounded-2xl p-4 w-full text-left"><div class="flex justify-between items-center"><b>${a.name}</b>${ico('chev','w-4 h-4 text-gray-400')}</div><div class="text-xs text-gray-500 mt-1">${a.day?'每月 '+a.day+' 日扣款'+(a.payer?'（'+a.payer+'）':''):'未設定自動扣款'}${a.cash?'・扣帳：'+a.cash:''}${a.card?'・信用卡：'+a.card:''}</div></button>`).join('')||'<div class="text-sm text-gray-500 text-center py-6">還沒有帳戶</div>');
+}
+function editAcc(i){
+  AI=i; SECT='accedit'; const a=SET.accounts[i], ac=D.cashData.accounts.filter(x=>x.name!==a.name).map(x=>[x.name,x.name]);
+  setView(a.name,scard(fld('信用卡每月扣款日','a_day',a.day,'number','1～31；留空＝不自動扣款（你自己手動繳）')+selF('繳款帳戶','a_payer',[['','同一個帳戶']].concat(ac),a.payer)+fld('銀行／扣帳通知來源','a_cash',a.cash,'text','會動到「餘額」的通知來源，多個用逗號分隔')+fld('信用卡消費通知來源','a_card',a.card,'text','會動到「未出帳」的通知來源，多個用逗號分隔。名稱請參考「記帳」明細的來源'))+saveBtn('saveAcc()'));
+}
+async function saveAcc(){ const a=SET.accounts[AI]; if(await setSave('accounts',{rows:[{name:a.name,day:$('a_day').value.trim(),payer:$('a_payer').value,cash:$('a_cash').value.trim(),card:$('a_card').value.trim()}]})) setOpen('acc'); }
+function setRules(){
+  const kinds=[['支出','支出（消費、刷卡）'],['收入','收入（入帳、薪資）'],['轉出','轉出（轉帳、提款）'],['轉入','轉入'],['bank','這是某家銀行的通知']];
+  setView('通知規則',scard('<div class="text-sm font-bold">新增規則</div>'+fld('通知文字包含','r_kw','','text','例如「提台幣」，至少兩個字，要夠具體')+selF('判定結果','r_kind',kinds,'支出')+fld('銀行名稱（選「某家銀行的通知」才填）','r_bank','','text','')+fld('限定來源（可留空）','r_src','','text','只對這家銀行的通知生效')+addBtn('addRule()','新增'))+'<div class="text-xs text-gray-500 px-1 pt-1">已有的規則</div>'+(SET.rules.map((r,i)=>`<div class="glass rounded-2xl p-3 flex items-center gap-3"><div class="flex-1 min-w-0"><div class="text-sm font-bold truncate">含「${r.kw}」</div><div class="text-xs text-gray-500">→ ${r.res}${r.src?'・限 '+r.src:''}</div></div>${trashBtn('delRule('+i+')')}</div>`).join('')||'<div class="text-sm text-gray-500 text-center py-6 leading-relaxed">還沒有自訂規則。在記帳分頁編輯一筆「待定」通知時，按「記住這種寫法」就會自動加在這裡</div>'));
+}
+async function addRule(){ const kw=$('r_kw').value.trim(), k=$('r_kind').value, res=k==='bank'?$('r_bank').value.trim():k; if(kw.length<2||!res) return toast('請填至少兩個字的通知文字，以及判定結果'); SET.rules.push({kw,res,src:k==='bank'?'':$('r_src').value.trim()}); if(await setSave('rules',{rows:SET.rules})) setOpen('rules'); }
+async function delRule(i){ SET.rules.splice(i,1); if(await setSave('rules',{rows:SET.rules})) setOpen('rules'); }
+function setStk(){
+  setView('股票券商',SET.stocks.length?SET.stocks.map((s,i)=>scard(`<div class="text-sm font-bold">${s.name}</div>`+fld('券商','s_b'+i,s.broker)+fld('手續費折扣','s_d'+i,s.disc,'number','空白＝用「一般設定」的預設；2.8 折填 0.28'))).join('')+saveBtn('saveStk()'):'<div class="text-sm text-gray-500 text-center py-6">還沒有持股資料</div>');
+}
+async function saveStk(){ if(await setSave('stocks',{rows:SET.stocks.map((s,i)=>({name:s.name,broker:$('s_b'+i).value.trim(),disc:$('s_d'+i).value.trim()}))})) setOpen('stk'); }
+function setLoan(){
+  const ln=(l,i)=>scard(`<div class="flex justify-between items-center"><div class="text-sm font-bold">貸款 ${i+1}</div>${trashBtn("loanDel('l',"+i+")")}</div>`+fld('貸款名稱','l_n'+i,l.name)+fld('貸款金額','l_a'+i,l.amount,'number')+fld('年利率（%）','l_r'+i,l.rate,'number','例如 2.185')+fld('期數','l_t'+i,l.n,'number')+fld('首期繳款日','l_d'+i,l.date,'date'));
+  const cg=(c,i)=>scard(`<div class="flex justify-between items-center"><div class="text-sm font-bold">利率變更 ${i+1}</div>${trashBtn("loanDel('c',"+i+")")}</div>`+fld('貸款名稱（要和上面一樣）','c_n'+i,c.name)+fld('生效日','c_d'+i,c.date,'date')+fld('新年利率（%）','c_r'+i,c.rate,'number'));
+  setView('貸款',SET.loans.map(ln).join('')+(SET.loans.length<5?addBtn("loanAdd('l')",'＋新增貸款'):'')+'<div class="text-xs text-gray-500 px-1 pt-2 leading-relaxed">浮動利率調整時，新增一筆利率變更，系統會從生效日起，用剩餘本金和剩餘期數重算月付金</div>'+SET.changes.map(cg).join('')+(SET.changes.length<10?addBtn("loanAdd('c')",'＋新增利率變更'):'')+saveBtn('saveLoan()'));
+}
+function loanSync(){ SET.loans=SET.loans.map((l,i)=>({name:$('l_n'+i).value.trim(),amount:$('l_a'+i).value.trim(),rate:$('l_r'+i).value.trim(),n:$('l_t'+i).value.trim(),date:$('l_d'+i).value})); SET.changes=SET.changes.map((c,i)=>({name:$('c_n'+i).value.trim(),date:$('c_d'+i).value,rate:$('c_r'+i).value.trim()})); }
+function loanAdd(k){ loanSync(); if(k==='l') SET.loans.push({name:'',amount:'',rate:'',n:'',date:''}); else SET.changes.push({name:SET.loans[0]?SET.loans[0].name:'',date:'',rate:''}); setLoan(); }
+function loanDel(k,i){ loanSync(); (k==='l'?SET.loans:SET.changes).splice(i,1); setLoan(); }
+async function saveLoan(){ loanSync(); if(await setSave('loans',{loans:SET.loans,changes:SET.changes})) setOpen('loan'); }
+function setGoal(){
+  setView('長期目標',SET.goals.map((g,i)=>scard(`<div class="flex justify-between items-center"><div class="text-sm font-bold">目標 ${i+1}</div>${trashBtn('goalDel('+i+')')}</div>`+fld('目標名稱','g_n'+i,g.name)+fld('目標淨資產','g_t'+i,g.target,'number')+fld('目標日期','g_d'+i,g.date,'date'))).join('')+(SET.goals.length<15?addBtn('goalAdd()','＋新增目標'):'')+saveBtn('saveGoal()'));
+}
+function goalSync(){ SET.goals=SET.goals.map((g,i)=>({name:$('g_n'+i).value.trim(),target:$('g_t'+i).value.trim(),date:$('g_d'+i).value})); }
+function goalAdd(){ goalSync(); SET.goals.push({name:'',target:'',date:''}); setGoal(); }
+function goalDel(i){ goalSync(); SET.goals.splice(i,1); setGoal(); }
+async function saveGoal(){ goalSync(); if(await setSave('goals',{rows:SET.goals})) setOpen('goal'); }
+function setSys(){
+  setView('系統',scard(`<div class="flex justify-between text-sm"><span class="text-gray-500">網頁版本</span><b>${VER}</b></div><div class="flex justify-between text-sm"><span class="text-gray-500">後端版本</span><b>${(D&&D.version)||'—'}</b></div>`)+addBtn('setReload()','重新載入資料')+`<button onclick="setLogout()" class="w-full py-2.5 rounded-xl bg-white/60 font-bold text-sm text-amber-700">登出（清除這支手機記住的密碼）</button><div class="text-xs text-gray-500 px-1 leading-relaxed">進階項目（例如備份資料夾名稱）仍在 Apps Script 程式碼裡，一般不需要動。</div>`);
+}
+async function setReload(){ localStorage.removeItem('cache'); await load(); toast('已重新載入'); }
+function setLogout(){ if(confirm('登出後下次開啟需要重新輸入密碼，確定嗎？')){ localStorage.removeItem('tok'); localStorage.removeItem('cache'); location.reload(); } }
 function tile(ic,cl,title,main,sub,bar,fn){
   return `<button onclick="${fn}" class="tap glass rounded-3xl p-4 shadow-sm w-full text-left flex items-center gap-3"><div class="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${cl}">${ico(ic,'w-6 h-6')}</div><div class="flex-1 min-w-0"><div class="text-xs text-gray-500">${title}</div><div class="text-xl font-extrabold leading-tight">${main}</div><div class="text-xs text-gray-500 mt-0.5 truncate">${sub}</div>${bar!=null?`<div class="w-full bg-white/60 rounded-full h-1.5 mt-2 overflow-hidden"><div class="bg-milktea-800 h-1.5 rounded-full" style="width:${Math.max(0,Math.min(bar,100))}%"></div></div>`:''}</div>${ico('chev','w-5 h-5 text-gray-400 shrink-0')}</button>`;
 }
