@@ -50,3 +50,6 @@ html,body{overflow-x:hidden;max-width:100%}
 /* 股票紅漲綠跌的小標籤、記帳類別選取外框 */
 .kcs{box-shadow:0 0 0 3px rgba(139,90,66,.45)}
 @media (prefers-color-scheme:dark){.bg-red-100{background:#4a2222}.text-red-600{color:#f87171}.kcs{box-shadow:0 0 0 3px rgba(240,226,214,.55)}}
+
+/* 全面更新：有修改的帳戶卡片外框 */
+.rowchg{box-shadow:inset 0 0 0 2px #fcd34d}
