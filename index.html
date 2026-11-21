@@ -49,13 +49,25 @@
 <script>
 // 資料由 /api/data（Vercel）代理讀寫，網頁內不含 Apps Script 網址與密鑰
 const API_URL = '/api/data';
-const VER = '2026.11.18';
+const VER = '2026.11.19';
 
 const $ = id => document.getElementById(id);
 const fm = n => new Intl.NumberFormat('zh-TW',{style:'currency',currency:'TWD',maximumFractionDigits:0}).format(n);
 let D = null;
 const M = fm;
-const tok = () => localStorage.getItem('tok') || '';
+const E = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function clean(d){   // 來自通知等外部來源的文字，一律跳脫後才放進畫面
+  if(d._cl) return d; d._cl=1;
+  (d.expenses||[]).forEach(x=>{ ['mer','raw','src','cat','acc'].forEach(k=>x[k]=E(x[k])); });
+  (d.dividends||[]).forEach(x=>{ x.note=E(x.note); });
+  return d;
+}
+const tok = () => {   // 密碼記在這支手機上最多 30 天，到期自動登出
+  const t=localStorage.getItem('tok'); if(!t) return '';
+  const t0=+localStorage.getItem('tokT')||0; if(!t0) localStorage.setItem('tokT',Date.now());
+  else if(Date.now()-t0>30*864e5){ ['tok','tokT','cache'].forEach(k=>localStorage.removeItem(k)); return ''; }
+  return t;
+};
 const hhmm = ts => new Date(ts).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:false});
 
 function toast(t,ms){ const el=$('toast'); el.textContent=t; el.classList.remove('hidden'); clearTimeout(window._tt); window._tt=setTimeout(()=>el.classList.add('hidden'),ms||2500); }
@@ -63,14 +75,14 @@ function setStatus(t,cls='text-gray-500'){ const s=$('status'); s.textContent=t;
 
 // 先秀快取、背景更新（stale-while-revalidate）
 async function load(retry=0){
-  if(!D){ try{ const c=JSON.parse(localStorage.getItem('cache')||'null'); if(c){ D=c.d; render(); setStatus('快取 '+hhmm(c.t)+'・更新中…'); } }catch(e){} }
-  if(!tok()){ const t=prompt('請輸入存取密碼'); if(!t){ setStatus('未輸入密碼','text-amber-700'); return; } localStorage.setItem('tok',t); }
+  if(!D){ try{ const c=JSON.parse(localStorage.getItem('cache')||'null'); if(c){ D=clean(c.d); render(); setStatus('快取 '+hhmm(c.t)+'・更新中…'); } }catch(e){} }
+  if(!tok()){ const t=prompt('請輸入存取密碼'); if(!t){ setStatus('未輸入密碼','text-amber-700'); return; } localStorage.setItem('tok',t); localStorage.setItem('tokT',Date.now()); }
   try{
     const r = await fetch(API_URL,{headers:{'x-pass':tok()}});
     const j = await r.json();
     if(j.message==='unauthorized'){ localStorage.removeItem('tok'); toast('密碼錯誤'); return load(); }
     if(j.status!=='success') throw new Error(j.message||'error');
-    D=j; ANIM=true; localStorage.setItem('cache',JSON.stringify({t:Date.now(),d:j}));
+    D=clean(j); ANIM=true; localStorage.setItem('cache',JSON.stringify({t:Date.now(),d:j}));
     render(); setStatus('已同步 '+hhmm(Date.now()),'text-green-600');
   }catch(e){
     if(retry<2){ setStatus(`喚醒伺服器中 (${retry+1}/2)…`); setTimeout(()=>load(retry+1),1500); }
@@ -378,7 +390,7 @@ function setSys(){
   setView('系統',scard(`<div class="flex justify-between text-sm"><span class="text-gray-500">網頁版本</span><b>${VER}</b></div><div class="flex justify-between text-sm"><span class="text-gray-500">後端版本</span><b>${(D&&D.version)||'—'}</b></div>`)+addBtn('setReload()','重新載入資料')+`<button onclick="setLogout()" class="w-full py-2.5 rounded-xl bg-white/60 font-bold text-sm text-amber-700">登出（清除這支手機記住的密碼）</button><div class="text-xs text-gray-500 px-1 leading-relaxed">進階項目（備份資料夾名稱、五年規劃表）仍在試算表或 Apps Script 裡，一般不需要動。</div>`);
 }
 async function setReload(){ localStorage.removeItem('cache'); await load(); toast('已重新載入'); }
-function setLogout(){ if(confirm('登出後下次開啟需要重新輸入密碼，確定嗎？')){ localStorage.removeItem('tok'); localStorage.removeItem('cache'); location.reload(); } }
+function setLogout(){ if(confirm('登出後下次開啟需要重新輸入密碼，確定嗎？')){ ['tok','tokT','cache'].forEach(k=>localStorage.removeItem(k)); location.reload(); } }
 function planView(){
   const tg=D.targetData, c=D.cashData, all=tg.series||[], hasT=tg.currentTarget>0, avail=c.availableCash, ahead=avail>=tg.currentTarget, n=new Date();
   const ym=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0'), ni=all.findIndex(x=>x.m===ym);
